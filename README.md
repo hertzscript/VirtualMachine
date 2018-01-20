@@ -11,9 +11,21 @@ HertzScript was created for use in the [Hertzfield Kernel](https://github.com/Fl
 
 ## FAQ
 
-**Q:** *Why?*
+**Q:** *What does this do?*
 
-**A:** To put it simply, Google V8 does not allow the preemption of JavaScript execution by other userspace JavaScript code. Although it runs an event loop for asynchronous I/O, all user JavaScript is executed in a single synchronous thread, including callbacks.
+**A:**  HertzScript automatically breaks up source code so that it transparently yields control back to the root caller.
+
+**Q:** *What does that achieve?*
+
+**A:** It allows JavaScript to be broken up into smaller units of work, giving you the ability to preempt a function's execution at nearly any point in its control flow.
+
+**Q:** *Why would I need that?*
+
+**A:** Although you may use an event loop for asynchronous I/O, all user JavaScript is executed in a single synchronous thread. Running JavaScript completely blocks the thread, meaning there are no guarantees that deadlines you set will ever be met. At best, sometimes your timer callbacks will miss their mark. At worst, your entire process will hang.
+
+**Q:** *How would the above affect my code?*
+
+**A:** Assuming a loaded/well-used system: At best, your callbacks will sometimes run a little late, or your response times will slightly lag. At worst, your entire process will hang.
 
 ## Detailed Description
 
