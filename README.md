@@ -23,10 +23,6 @@ HertzScript was created for use in the [Hertzfield Kernel](https://github.com/Fl
 
 **A:** Although you may use an event loop for asynchronous I/O, all user JavaScript is executed in a single synchronous thread. Running JavaScript completely blocks the thread, meaning there are no guarantees that deadlines you set will ever be met. At best, sometimes your timer callbacks will miss their mark. At worst, your entire process will hang.
 
-**Q:** *How would the above affect my code?*
-
-**A:** Assuming a loaded/well-used system: At best, your callbacks will sometimes run a little late, or your response times will slightly lag. At worst, your entire process will hang.
-
 ## Detailed Description
 
 Due to the single-threaded nature of JavaScript, executing code blocks other code from executing. The following JavaScript code is a good example of this problem occurring. In the below example, we schedule two `setTimeout` callbacks; one runs as soon as possible, and the other runs after 500ms. We're using `block` here to simulate a long-running callback, which runs for 1000ms:
