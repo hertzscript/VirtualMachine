@@ -7,7 +7,7 @@ A source-to-source optimizing compiler which produces preemptable JavaScript.
 
 Given valid JavaScript source code as input, HzScript produces semantically (sometimes directly) equivalent JavaScript source code with all user functions converted to Generators, and `yield` inserted between every operation. The source code HzScript produces is fully portable, and does not have any external dependency to HzScript.
 
-HertzScript was created for use in the [Hertzfield Kernel](https://github.com/Floofies/hertzfield-kernel).
+HertzScript was created for use in the [Hertzfeld Kernel](https://github.com/Floofies/hertzfeld-kernel).
 
 ## FAQ
 
