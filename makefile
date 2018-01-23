@@ -31,8 +31,7 @@ prod-build/dist/HertzScript.js : prod-build/src/javascriptParser.js
 	@touch prod-build/dist/HertzScript.js
 	@echo "var HzScript = (function(){var module = {};" >> prod-build/dist/HertzScript.js
 	@cat prod-build/src/javascriptParser.js src/main.js >> prod-build/dist/HertzScript.js
-	@echo "return HzScript;})();" >> prod-build/dist/HertzScript.js
-	@cat src/nodeExport.js >> prod-build/dist/HertzScript.js
+	@echo "return HzScript;})();if(module!==undefined){module.exports=HzScript}" >> prod-build/dist/HertzScript.js
 	@printf "      \x1b[32;01m[OK]\x1b[0m\n"
 prod : prod-build/dist/HertzScript.js
 	@cp README.md prod-build/README.md
