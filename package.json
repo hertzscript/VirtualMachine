@@ -1,0 +1,44 @@
+{
+	"name": "hertzscript",
+	"version": "1.0.0",
+	"description": "A source-to-source optimizing compiler which produces preemptable JavaScript.",
+	"keywords": [
+		"compiler",
+		"javascript",
+		"preemption",
+		"preemptive",
+		"transpiler",
+		"thread",
+		"interruption",
+		"javascript-source",
+		"cooperative-multitasking",
+		"preemptive-multitasking",
+		"cooperative-preemtive-multitasking",
+		"generator",
+		"generators",
+		"generator-functions",
+		"generator-function",
+		"yield-operator",
+		"yield"
+	],
+	"homepage": "https://github.com/Floofies/HertzScript#readme",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Floofies/HertzScript.git"
+	},
+	"bugs": {
+		"url": "https://github.com/Floofies/HertzScript/issues"
+	},
+	"devDependencies": {
+		"jasmine": "^2.8.0"
+	},
+	"scripts": {
+		"test": "jasmine spec/Spec.js"
+	},
+	"main": "dist/HertzScript.js",
+	"author": "Dani Glore",
+	"license": "MIT",
+	"dependencies": {
+		"pegjs": "^0.10.0"
+	}
+}

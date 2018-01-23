@@ -1,7 +1,9 @@
 const GeneratorFunction = (function* () { }).constructor;
-const HzCompiler = function (parser = ES5Parser) {
+const HzScript = function (parser = ES5Parser) {
 	this.parser = parser;
 }
+// Include Peg JS Parser
+HzScript.parser = module.exports;
 HzScript.searchAst = function (ast, callback, bfs = true) {
 	var node;
 	const nodes = [...ast.body];
@@ -99,6 +101,3 @@ HzScript.hotCompile = function (args, source = null) {
 	}
 	return new GeneratorFunction(args, HzScript.compile(source, false));
 };
-if (module !== undefined) {
-	module.exports = HzScript;
-}
