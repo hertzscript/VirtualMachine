@@ -63,7 +63,7 @@ If we run `block` after it has been compiled with HzScript, we can then execute 
 var block = '\
 	var start = performance.now();\
 	spin: while ((performance.now() - start) < 1000);\
-	console.log("Ran blocker for " + (performance.now() - start) + "ms.");
+	console.log("Ran blocker for " + (performance.now() - start) + "ms.");\
 ';
 // Compile into a live Generator function with HzScript:
 var blocker = HzScript.hotCompile(block)();
