@@ -1,4 +1,4 @@
-const GeneratorFunction = (function*(){}).constructor;
+const GeneratorFunction = (function* () { }).constructor;
 const HzCompiler = function (parser = ES5Parser) {
 	this.parser = parser;
 }
@@ -89,10 +89,12 @@ HzScript.hotCompile = function (args, source = null) {
 		source = args;
 		args = [];
 	} else {
-		if ((typeof args) === "object" && !Array.isArray(args)) {
-			args = Object.keys(args);
-		} else {
-			throw new TypeError("Argument 1 must be an Object, Array, or String.");
+		if ((typeof args) === "object") {
+			if (!Array.isArray(args)) {
+				args = Object.keys(args);
+			} else {
+				throw new TypeError("Argument 1 must be an Object, Array, or String.");
+			}
 		}
 	}
 	return new GeneratorFunction(args, HzScript.compile(source, false));
