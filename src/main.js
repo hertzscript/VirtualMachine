@@ -1,3 +1,21 @@
+const YIELD_COND_CALLBACK = {
+	type: "IfStatement",
+	test: {
+		type: "CallExpression",
+		callee: {
+			type: "Identifier",
+			name: "__HZSRIPT_ENV_YIELD__"
+		},
+		arguments: null
+	},
+	consequent: {
+		type: "ExpressionStatement",
+		expression: {
+			type: "YieldExpression",
+			argument: null
+		}
+	}
+};
 const GeneratorFunction = (function* () { }).constructor;
 const HzScript = function (parser = ES5Parser) {
 	this.parser = parser;
@@ -5,17 +23,36 @@ const HzScript = function (parser = ES5Parser) {
 // Include Peg JS Parser
 HzScript.parser = module.exports;
 HzScript.searchAst = function (ast, callback, bfs = true) {
+	if (!("body" in ast) || !Array.isArray(ast.body)) {
+		throw new TypeError("Argument 1 must be a valid ESTree Program");
+	}
+	if (ast.body.length === 0) {
+		return;
+	}
+	const tuples = [];
+	const addTuple = (child, parent = null) => tuples.push({ node: child, parentNode: parent });
+	const getTuple = () => tuples[bfs ? "shift" : "pop"]();
+	addTuple(ast, null);
 	var node;
-	const nodes = [...ast.body];
-	while (nodes.length > 0) {
-		node = nodes[bfs ? "shift" : "pop"]();
-		callback(node);
-		if ("body" in node) {
-			if (node.body.type === "BlockStatement" || node.body.type === "Expression") {
-				//TODO: Finish search algorithm
+	var parentNode;
+	var tuple;
+	while (tuples.length > 0) {
+		tuple = getTuple();
+		node = tuple.node;
+		parentNode = tuple.parent;
+		callback(node, parentNode);
+		if (("body" in node) && (typeof node.body) === "object") {
+			if (Array.isArray(node.body)) {
+				node.body.forEach(child => addTuple(child, node));
+			} else {
+				addTuple(node.body, node);
 			}
-
 		}
+	}
+};
+HzScript.opts = {
+	FunctionDeclaration = function (node) {
+		this.type = FunctionDeclaration
 	}
 };
 HzScript.optimizeNode = function (node) {
@@ -27,7 +64,7 @@ HzScript.optimizeNode = function (node) {
 	} else if (node.type === "CallExpression") {
 
 	} else if (node.type === "FunctionExpression") {
-
+		node.generator = true;
 	} else if (node.type === "SequenceExpression") {
 
 	} else if (node.type === "UnaryExpression") {
@@ -44,7 +81,15 @@ HzScript.optimizeNode = function (node) {
 	} else if (node.type === "VariableDeclarator") {
 
 	} else if (node.type === "FunctionDeclaration") {
-
+		node.generator = true;
+		const body = node.body;
+		if (!Array.isArray(body) || body.length === 0) {
+			return;
+		}
+		for (var loc = 0; loc < body.length; loc++ , loc++) {
+			body.splice(loc, 0, YIELD_COND_CALLBACK);
+		}
+	} else if (body.type === "BlockStatement") {
 
 	} else if (node.type === "BlockStatement") {
 
@@ -70,7 +115,7 @@ HzScript.optimizeNode = function (node) {
 
 	}
 }
-HzScript.compile = function (source, wrap = true) {
+HzScript.compile = function (source, args, wrap = true, callback = "null") {
 	if ((typeof source) !== "string") {
 		throw new TypeError("Argument 1 must be a String.");
 	}
@@ -82,22 +127,32 @@ HzScript.compile = function (source, wrap = true) {
 	//TODO: Render back to source code.
 	const compiledSource = notRealRenderer(ast);
 	if (wrap) {
-		compiledSource = "function* window(...args) {" + compiledSource + "}";
+		compiledSource = "function* main(" + args !== null ? args.join(",") : "" + callback !== null ? "__HZSCRIPT_ENV_YIELD__, " : "" + ") {" + compiledSource + "}";
 	}
 	return compiledSource;
 };
-HzScript.hotCompile = function (args, source = null) {
-	if (source === null) {
-		source = args;
-		args = [];
-	} else {
-		if ((typeof args) === "object") {
-			if (!Array.isArray(args)) {
-				args = Object.keys(args);
-			} else {
-				throw new TypeError("Argument 1 must be an Object, Array, or String.");
-			}
+HzScript.hotCompile = function (source, args, yieldCallback = null) {
+	if (args !== null && (typeof args) === "object") {
+		if (!Array.isArray(args)) {
+			args = Object.keys(args);
 		}
+	} else if (args !== null) {
+		throw new TypeError("Argument 1 must be an Object, Array, or String.");
+	} else {
+		args = [];
 	}
-	return new GeneratorFunction(args, HzScript.compile(source, false));
+	if (yieldCallback !== null) {
+		if ((typeof yieldCallback) !== "function") {
+			throw new TypeError("Argument 3 must be a Functon or null.");
+		}
+		args.push("__HZSCRIPT_ENV_YIELD__");
+	}
+	return new GeneratorFunction(args, HzScript.compile(source, null, false));
+};
+HzScript.test = function () {
+	this.searchAst(this.parser, function (node) {
+		if (node.type === "ExpressionStatement" && node.expression.type === "Literal") {
+			node
+		}
+	});
 };
