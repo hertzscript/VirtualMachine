@@ -36,9 +36,7 @@ function block() {
 }
 
 // Schedule blocker to run ASAP
-setTimeout(function () {
-	block()
-}, 0);
+setTimeout(block, 0);
 
 // Schedule timer to run in 500ms
 var start = performance.now();
