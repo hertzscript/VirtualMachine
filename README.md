@@ -1,23 +1,28 @@
 # HertzScript
-A source-to-source optimizing compiler which produces preemptable JavaScript.
 
 :seedling: This project is in early alpha.
 
-## Brief Description
+HertzScript (abbreviated "HzScript") is a Babel plugin which takes your regular existing JavaScript source code as input, and transforms it into an interruptable coroutine system with voluntary preemption. This project is part of a larger effort to implement preemptively multitasked Green threads in (and only in) JavaScript, and was initially created as the core executor of the [Hertzfeld Kernel](https://github.com/Floofies/hertzfeld-kernel).
 
-Given valid JavaScript source code as input, HzScript produces semantically (sometimes directly) equivalent JavaScript source code with all user functions converted to Generators, and `yield` inserted between every operation. The source code HzScript produces is fully portable, and does not have any external dependency to HzScript.
+## High-Level Synopsis
 
-HertzScript was created for use in the [Hertzfeld Kernel](https://github.com/Floofies/hertzfeld-kernel).
+HzScript consists of a Babel plugin utilizing the visitor pattern, and a coroutine dispatcher with which to run the resulting source code. Given valid JavaScript source code as input, HzScript produces semantically (sometimes directly) equivalent JavaScript source code with all functions converted to coroutine-like GeneratorFunctions; calls to the coroutines are converted to cooperative yields with deferred invocation. The source code HzScript produces can be a fully portable, platform-agnostic JavaScript module, which transparently integrates with existing software.
+
+Normally, coroutines are reserved for cooperative multitasking, but HzScript implements a special type named voluntary preemptive multitasking. In regular cooperative-style programmers must declare points at which programs will yield, and HzScript extends this concept by automating it, transforming every function call into a voluntary preemption point. Function calls are re-interpreted as yielded kernelized instructions. In plain english, HzScript transforms JavaScript functions into "function dispensers" which simply yield the next function to be run tather than running it themselves. To facilitate such a transformation while preserving normal JavaScript execution, a coroutine dispatcher which implements the instruction specification must be used to run the compiled source code.
+
+The theory of operation behind this system is such that the coroutine dispatcher need not be complex. A simple stack machine is sufficient to interpret the instruction set, which consists of function invocation, returns, yields, and throws. The instruction set corresponds with stack operations which push and pop the coroutines from a simple Array-based virtual stack, taking most of the responsibilities of stack management away from userland source code. Supplied with a time-slice quantum in nanoseconds, the coroutine dispatcher will attempt to return at the end of that specified duration.
+
+While the dispatcher does not re-implement the the invocation operator, it does change how the "real" stack is stored in a JavaScript runtime, limiting the stack to a set size. The stack will generally consist of the coroutine dispatcher or some other caller from user code, with the currently executing coroutine at the end of the stack; the stack does not grow past this point except during function calls which were initiated by many of JavaScript's standard operators which are not the invocation operator. Efforts are also underway to implement forced preemption by targeting such operators, in which each atomic operation in an expression is transformed into an individual coroutine.
 
 ## FAQ
 
-**Q:** *What does this do?*
+**Q:** *What does this do again?*
 
-**A:**  HertzScript automatically breaks up source code into smaller units of work, transparently yielding control back to the root caller between almost every operation.
+**A:**  HertzScript automatically turns regular JavaScript subroutines into interruptible JavaScript coroutines. Preparation of the input source code is not neccesary, so you can continue to write JavaScript without changing anything.
 
 **Q:** *What does that achieve?*
 
-**A:** It allows JavaScript to multitask on a single thread, and gives you the ability to preempt/pause a function's execution at nearly any point in its control flow.
+**A:** It allows JavaScript to multitask on a single thread, gives you the ability to preempt/pause a function's execution at nearly any point in its control flow.
 
 **Q:** *Why would I need that?*
 
