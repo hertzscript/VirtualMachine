@@ -16,7 +16,7 @@ HertzScript (abbreviated "HzScript") is a [Babel](https://babeljs.io/) plugin wh
 
 **Q:** *Why would I need this?*
 
-**A:** HzScript allows developers to reliably multitask on a single thread without manually implementing it, so you can easily write JavaScript as if it were operating on a single-thread and execute it all in the same multitasking environment. If you're already manually writing cooperatively multitasked source code, and/or need reliable single-process multitasking, HzScript could take over this responsibility for you. If you're implementing [Green threads](https://en.wikipedia.org/wiki/Green_threads), then the HzScript dispatcher could serve as an executor for each thread.
+**A:** HzScript allows developers to reliably multitask on a single thread without manually implementing it, so you can easily write multiple JavaScript programs and execute them in the same multitasking environment. If you're already manually writing cooperatively multitasked source code, and/or need reliable single-process multitasking, HzScript could take over this responsibility for you. If you're implementing [Green threads](https://en.wikipedia.org/wiki/Green_threads), then the HzScript dispatcher could serve as an executor for each thread.
 
 ## High-Level Synopsis
 
