@@ -183,9 +183,9 @@ function Call() {
 	this.thisArg = null;
 	this.args = null;
 }
-Call.prototype.set = function (functor, thisArg, ...args) {
+Call.prototype.set = function (functor, ...args) {
 	this.functor = functor;
-	this.thisArg = thisArg;
+	this.thisArg = null;
 	this.args = args;
 	return this;
 };
