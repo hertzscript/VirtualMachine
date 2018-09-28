@@ -53,7 +53,6 @@ module.exports = function (babel) {
 	}
 	function hzYieldArg(argExp) {
 		const callExp = hzYield();
-		console.log(argExp);
 		callExp.arguments.push(argExp);
 		return callExp;
 	}
@@ -63,7 +62,7 @@ module.exports = function (babel) {
 			exit: function (path) {
 				if (replacedNodes.has(path.node)) return;
 				if (path.node.callee.type === "MemberExpression") {
-					if (path.node.arguments.length = 0) {
+					if (path.node.arguments.length === 0) {
 						path.replaceWith(hzCallMethod(
 							path.node.callee.object.name,
 							path.node.callee.property.name
@@ -76,7 +75,7 @@ module.exports = function (babel) {
 						));
 					}
 				} else {
-					if (path.node.arguments.length = 0) {
+					if (path.node.arguments.length === 0) {
 						path.replaceWith(hzCall(
 							path.node.callee.name
 						));
