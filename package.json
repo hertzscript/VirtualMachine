@@ -39,6 +39,6 @@
 	"author": "Dani Glore",
 	"license": "MIT",
 	"dependencies": {
-		"pegjs": "^0.10.0"
+		"babel": "^6.23.0"
 	}
 }
