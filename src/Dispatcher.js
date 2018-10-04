@@ -1,235 +1,207 @@
-function Coroutine(functor, thisArg = null, args = null) {
-	this.type = "coroutine";
-	this.image = functor;
-	this.instance = null;
-	this.args = args;
-	this.thisArg = thisArg;
+const TokenLib = require("./TokenLib.js");
+const performance = require('perf_hooks').performance;
+const GeneratorFunction = (function* () { }).constructor;
+const Generator = GeneratorFunction.prototype.prototype;
+const ArrayIterator = [][Symbol.iterator]().__proto__;
+const tokens = new TokenLib();
+function isIterator(input) {
+	return ((typeof input) === "object")
+		&& ("next" in input)
+		&& (input.next === Generator.next || input.next === ArrayIterator.next);
 }
-Coroutine.prototype.call = function (nextValue) {
-	if (this.instance === null) {
-		if (this.thisArg !== null) {
-			if (this.args !== null) {
-				this.instance = this.image.apply(this.thisArg, this.args);
-			} else {
-				this.instance = this.image.call(this.thisArg);
-			}
-		} else {
-			if (this.args !== null) {
-				this.instance = this.image(...this.args);
-			} else {
-				this.instance = this.image();
-			}
-		}
-	}
-	const firstYield = this.instance.next(nextValue);
-	if (firstYield === Dispatcher.genSym) return this.instance;
+function isKernelized(input) {
+	return ((typeof state.value) === "object") && (symbols.kernSym in state.value);
 };
-function Subroutine(functor, thisArg = null, args = null) {
-	this.type = "subroutine";
-	this.functor = functor;
-	this.args = args;
+function Program(functor, thisArg = null, args = null) {
+	this.type = "unknown";
+	this.image = functor;
+	if (symbols.genSym in functor) this.type = "generator";
+	else if (symbols.crtSym in functor) this.type = "coroutine";
 	this.thisArg = thisArg;
+	this.args = args;
+	this.instance = null;
 }
-Subroutine.prototype.call = function (args) {
-	if (this.thisArg !== null) {
-		if (this.args !== null) {
-			var state = this.functor.apply(this.thisArg, this.args);
+Program.prototype.init = function (thisArg = null, args = null) {
+	if (thisArg === null) {
+		if (args === null) {
+			var initState = this.image();
 		} else {
-			var state = this.functor.call(this.thisArg);
+			var initState = this.image(...args);
 		}
 	} else {
-		if (this.args !== null) {
-			var state = this.functor(...this.args);
+		if (args === null) {
+			var initState = this.image.call(thisArg);
 		} else {
-			var state = this.functor();
+			var initState = this.image.apply(thisArg, args);
 		}
 	}
-	return { done: true, value: state };
+	if (!isIterator(initState)) return initState;
+	if (nextValue === symbols.nullSym) {
+		var initYield = this.instance.next();
+	} else {
+		var initYield = this.instance.next(nextValue);
+	}
+	if (initYield.value === symbols.genSym) {
+		this.type = "generator";
+		this.image[symbols.genSym] = null;
+		return this.instance;
+	}
+	if (initYield.value === symbols.crtSym) {
+		this.type = "coroutine";
+		this.image[symbols.crtSym] = null;
+		this.instance = initState;
+	}
+	return initYield.value;
 };
-const kernSym = Symbol("Kernelization Marker Symbol");
-// Dispatcher API Kernelizers
-function Call() {
-	this.type = "call";
-	this.functor = null;
-	this.args = null;
-	this.thisArg = null;
-}
-Call.prototype[kernSym] = null;
-Call.prototype.set = function (functor, thisArg, ...args) {
-	this.functor = functor;
-	this.args = args;
-	this.thisArg = thisArg;
-	return this;
+Program.prototype.throw = function (error) {
+	if (this.instance !== null) return this.instance.throw(error);
 };
-function CallSubroutine() {
-	this.type = "subroutineCall";
-	this.functor = null;
-	this.args = null;
-	this.thisArg = null;
-}
-CallSubroutine.prototype[kernSym] = null;
-CallSubroutine.prototype.set = function (functor, thisArg, ...args) {
-	this.functor = functor;
-	this.args = args
-	this.thisArg = thisArg;
-	return this;
+Program.prototype.call = function (nextValue = symbols.nullSym) {
+	if (this.instance === null) {
+		const initState = this.init(this.thisArg, this.args);
+	}
+	if (nextValue === symbols.nullSym) {
+		return this.instance.next();
+	} else {
+		return this.instance.next(nextValue);
+	}
 };
-function CallMethod() {
-	this.type = "methodCall";
-	this.object = null;
-	this.prop = null;
-	this.args = null;
-	this.thisArg = null;
-}
-CallMethod.prototype.set = function (object, prop, ...args) {
-	this.object = object;
-	this.prop = prop;
-	this.args = args
-	this.thisArg = object;
-	return this;
-};
-CallMethod.prototype[kernSym] = null;
-function CallSubroutineMethod() {
-	this.type = "subroutineMethodCall";
-	this.object = null;
-	this.prop = null;
-	this.args = null;
-	this.thisArg = null;
-}
-CallSubroutineMethod.prototype[kernSym] = null;
-CallSubroutineMethod.prototype.set = function (object, prop, ...args) {
-	this.object = object;
-	this.prop = prop;
-	this.args = args
-	this.thisArg = object;
-	return this;
-};
-function ReturnValue() {
-	this.type = "return";
-	this.returnValue = null;
-}
-ReturnValue.prototype[kernSym] = null;
-ReturnValue.prototype.set = function (value = Dispatcher.nullSym) {
-	this.returnValue = value;
-	return this;
-};
-function YieldValue() {
-	this.type = "yield",
-	this.yieldValue = null;
-}
-YieldValue.prototype[kernSym] = null;
-YieldValue.prototype.set = function (value = Dispatcher.nullSym) {
-	this.yieldValue = value;
-	return this;
-};
-const flyweights = [
-	Call,
-	CallMethod,
-	CallSubroutine,
-	CallSubroutineMethod,
-	ReturnValue,
-	YieldValue
-];
-function Dispatcher() {
+function Dispatcher(tokenLib, quantum = 300000000) {
+	// Instruction Token Library
+	this.tokenLib = tokenLib;
+	// Default time-slice length per cycle()
+	this.quantum = quantum;
+	// Set to "true" when the Dispatcher is running
 	this.running = false;
-	this.task = null;
-	this.lastReturn = null;
-	this.lastError = null;
+	// The virtual stack of Programs and Functions
 	this.stack = [];
-	for (const Flyweight of flyweights) {
-		const flyweight = new Flyweight();
-		this[Flyweight.name] = (...args) => flyweight.set(...args);
-	}
+	// The last new return value seen by the Dispatcher
+	this.lastReturn = null;
+	// The last new Error seen by the Dispatcher
+	this.lastError = null;
+	this.metrics = {
+		makeflight: 0,
+		makespan: 0
+	};
+	// Initialize Kernelizer Flyweights
+	for (const tokenName in tokens) this[tokenName] = argsArray => tokens[tokenName].set(argsArray);
 }
-Dispatcher.kernSym = kernSym;
-Dispatcher.nullSym = Symbol("Null Value Symbol");
-Dispatcher.genSyn = Symbol("Generator Symbol");
-Dispatcher.prototype.kernSym = Dispatcher.kernSym;
-Dispatcher.prototype.nullSym = Dispatcher.nullSym;
-Dispatcher.prototype.cycle = function () {
-	try {
-		if (this.stack.length === 0 || !this.running) {
-			this.running = false;
-			return;
-		}
-		this.task = this.stack[this.stack.length - 1];
-		try {
-			if (this.lastError !== null) {
-				var state = this.task.instance.throw(this.lastError);
-			} else {
-				var state = this.task.call(this.lastReturn !== null ? this.lastReturn : undefined);
-			}
-		} catch (error) {
-			this.stack.pop();
-			this.lastError = error;
-		}
-		this.lastReturn = null;
-		if (this.task.type === "subroutine"
-			|| (typeof state.value) !== "object"
-			|| !(this.kernSym in state.value)
-		) {
-			var node = this.ReturnValue(state.value);
-		} else {
-			var node = state.value;
-		}
-		if (node.type === "return") {
-			this.lastReturn = node.returnValue !== this.nullSym ? node.returnValue : undefined;
-			this.stack.pop();
-			return;
-		} else if (node.type === "yield") {
-			this.lastReturn = node.yieldValue !== this.nullSym ? node.yieldValue : undefined;
-			this.stack.pop();
-			return;
-		} else if (state.done) {
-			this.stack.pop();
-		}
-		if (node.type === "call") {
-			if (node.args.length === 0) node.args = null;
-			this.stack.push(new Coroutine(node.functor, node.thisArg, node.args));
-		} else if (node.type === "methodCall") {
-			if (node.args.length === 0) node.args = null;
-			this.stack.push(new Coroutine(node.object[node.prop], node.object, node.args));
-		} else if (node.type === "subroutineCall") {
-			if (node.args.length === 0) node.args = null;
-			this.stack.push(new Subroutine(node.functor, node.thisArg, node.args));
-		} else if (node.type === "subroutineMethodCall") {
-			if (node.args.length === 0) node.args = null;
-			this.stack.push(new Subroutine(node.object[node.prop], node.object, node.args));
-		} else if (node.type === "sysCall") {
-			if (!(sysCall in this.sysCalls)) throw new ReferenceError("ABORTING CYCLE: Requested SysCall \"" + node.callName + "\" was not found.");
-			this.sysCalls[node.callName](node.args);
-		}
-	} catch (error) {
-		console.group(error);
-		console.log("\n");
-		console.error(`Current Task:\n{\n\t${Object.keys(this.task).map(key => `${key}: ${((typeof this.task[key]) === "function" ? "[function " + this.task[key].name + "]" : this.task[key])}`).join(",\n\t")}\n}\n`);
-		console.error("Dispatcher Stack:\n" + this.stack.map(function (node) {
-			return `{\n\t${Object.keys(node).map(key => `${key}: ${((typeof node[key]) === "function" ? "[function " + node[key].name + "]" : node[key])}`).join(",\n\t")}\n}`;
-		}).join(",\n"));
-		console.groupEnd();
-		this.running = false;
-	}
+Dispatcher.prototype.symbols = symbols;
+Dispatcher.prototype.isKernelized = isKernelized;
+Dispatcher.prototype.subroutineAdapter = function (tokenStream, thisArg, argsArray) {
+	const d = new Dispatcher();
+	d.enqueue(tokenStream, thisArg, argsArray);
+	return d.runSync();
+};
+Dispatcher.prototype.createCoroutine = function (functor) {
+	functor[symbols.tokenSym] = functor;
+	functor[symbols.crtSym] = true;
+	return function* (...argsArray) {
+		return hzDisp.subrouitneAdapter(functor[symbols.tokenSym], argsArray);
+	};
+};
+Dispatcher.prototype.createGenerator = function (functor) {
+	functor[symbols.tokenSym] = functor;
+	functor[symbols.genSym] = true;
+	const hzDisp = this;
+	return function (...args) {
+		return hzDisp.subrouitneAdapter(functor[symbols.tokenSym], this, argsArray);
+	};
 };
 Dispatcher.prototype.enqueue = function (functor, thisArg, ...args) {
-	this.stack.push(new Coroutine(functor, thisArg, ...args));
+	this.stack.push(new Program(functor, thisArg, args));
 };
-Dispatcher.prototype.runSync = function () {
-	this.running = true;
-	while (this.running) this.cycle();
+Dispatcher.prototype.killLast = function () {
+	if (this.stack.length > 0) {
+		const program = this.stack.pop();
+		if (program.instance !== null) program.instance.return();
+	}
 };
-Dispatcher.prototype.runAsync = function (quantum = 0) {
-	this.running = true;
+Dispatcher.prototype.killAll = function () {
+	while (this.stack.length !== 0) this.killLast();
+	this.stop();
+};
+// Processes a kernelized instruction
+Dispatcher.prototype.processState = function (kern) {
+	// Interprets an instruction kernel and performs the indicated actions
+	if (kern.type === "return") {
+		this.killLast();
+		this.lastReturn = kern.value;
+	} else if (kern.type === "yield") {
+		this.stack.pop();
+		this.lastReturn = kern.value;
+	} else if (kern.type === "call") {
+		if (node.args.length === 0) node.args = null;
+		this.enqueue(node.functor, node.thisArg, node.args);
+	} else if (kern.type === "callMethod") {
+		if (node.args.length === 0) node.args = null;
+		this.enqueue(node.object[node.prop], node.object, node.args);
+	} else {
+		throw new TypeError("Illegal Instruction Kernel \"" + kern.type + "\"");
+	}
+};
+// Runs a single execution cycle
+Dispatcher.prototype.cycle = function (quantum = null) {
+	const complete = quantum === false;
+	if (!complete && quantum === null) quantum = this.quantum;
+	const start = performance.now();
+	cycle: while (complete || performance.now() - start <= quantum) {
+		if (!this.running || this.stack.length === 0) {
+			// Dispatcher is not running or stack is empty, so abort
+			this.stop();
+			return;
+		}
+		// Advance arbitrary execution of the last Program in the virtual stack
+		try {
+			const program = this.stack[this.stack.length - 1];
+			// Advances execution of the Program and saves the yielded state
+			if (this.lastError !== null) {
+				// Uncaught error was seen before, so throw it into the Program
+				var state = program.throw(this.lastError);
+				this.lastError = null;
+			} else {
+				// Return value was seen before, so invoke the Program with it
+				var state = this.lastReturn !== null ? program.call(this.lastReturn) : program.call();
+				this.lastReturn = null;
+			}
+			// Return the yielded state of the Program
+			if (!isIterator(state)) state = this.returnValue(state);
+			else if (!isKernelized(state.value)) state = this.returnValue(state.value);
+			if ((state.type === "return" || state.type === "yield") && this.stack.length === 0) {
+				this.lastReturn = state.value;
+				return this.lastReturn;
+			}
+			// Collect resultant state and process any instructions
+			this.processState(state);
+		} catch (error) {
+			// Uncaught error, so end the program
+			this.killLast();
+			this.lastError = error;
+			if (this.stack.length === 0) {
+				this.stop();
+				throw error;
+			}
+		}
+	}
+};
+Dispatcher.prototype.runComplete = function () {
+	return this.cycle(false);
+};
+Dispatcher.prototype.runSync = function (quantum = null) {
+	while (this.running) this.cycle(quantum);
+	return this.lastReturn;
+};
+Dispatcher.prototype.runAsync = function (interval = 300, quantum = null) {
 	return new Promise(function (resolve, reject) {
 		const asyncRunner = function () {
-			this.cycle();
-			if (!this.running) return resolve();
-			setTimeout(asyncRunner, quantum);
+			this.runSync(quantum);
+			if (!this.running) return resolve(this.lastReturn);
+			setTimeout(asyncRunner, interval);
 		};
 	});
 };
-Dispatcher.prototype.runIterator = function* () {
-	this.running = true;
-	while (this.running) yield this.cycle();
+Dispatcher.prototype.runIterator = function* (quantum = null) {
+	while (this.runSync()) yield;
 };
 Dispatcher.prototype.stop = function () {
 	this.running = false;

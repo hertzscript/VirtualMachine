@@ -1,5 +1,4 @@
-// Original Program
-function program() {
+module.exports = function program() {
 	function genNumber() {
 		return Math.random().toFixed();
 	}
@@ -11,4 +10,4 @@ function program() {
 	}
 	const numIterator = genNumberIterator();
 	console.log(add(numIterator.next().value, numIterator.next().value));
-}
+};
