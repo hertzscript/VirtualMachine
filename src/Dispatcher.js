@@ -1,71 +1,5 @@
-const TokenLib = require("./TokenLib.js");
 const performance = require('perf_hooks').performance;
-const GeneratorFunction = (function* () { }).constructor;
-const Generator = GeneratorFunction.prototype.prototype;
-const ArrayIterator = [][Symbol.iterator]().__proto__;
-const tokens = new TokenLib();
-function isIterator(input) {
-	return ((typeof input) === "object")
-		&& ("next" in input)
-		&& (input.next === Generator.next || input.next === ArrayIterator.next);
-}
-function isKernelized(input) {
-	return ((typeof state.value) === "object") && (symbols.kernSym in state.value);
-};
-function Program(functor, thisArg = null, args = null) {
-	this.type = "unknown";
-	this.image = functor;
-	if (symbols.genSym in functor) this.type = "generator";
-	else if (symbols.crtSym in functor) this.type = "coroutine";
-	this.thisArg = thisArg;
-	this.args = args;
-	this.instance = null;
-}
-Program.prototype.init = function (thisArg = null, args = null) {
-	if (thisArg === null) {
-		if (args === null) {
-			var initState = this.image();
-		} else {
-			var initState = this.image(...args);
-		}
-	} else {
-		if (args === null) {
-			var initState = this.image.call(thisArg);
-		} else {
-			var initState = this.image.apply(thisArg, args);
-		}
-	}
-	if (!isIterator(initState)) return initState;
-	if (nextValue === symbols.nullSym) {
-		var initYield = this.instance.next();
-	} else {
-		var initYield = this.instance.next(nextValue);
-	}
-	if (initYield.value === symbols.genSym) {
-		this.type = "generator";
-		this.image[symbols.genSym] = null;
-		return this.instance;
-	}
-	if (initYield.value === symbols.crtSym) {
-		this.type = "coroutine";
-		this.image[symbols.crtSym] = null;
-		this.instance = initState;
-	}
-	return initYield.value;
-};
-Program.prototype.throw = function (error) {
-	if (this.instance !== null) return this.instance.throw(error);
-};
-Program.prototype.call = function (nextValue = symbols.nullSym) {
-	if (this.instance === null) {
-		const initState = this.init(this.thisArg, this.args);
-	}
-	if (nextValue === symbols.nullSym) {
-		return this.instance.next();
-	} else {
-		return this.instance.next(nextValue);
-	}
-};
+const Program = require("./Program.js");
 function Dispatcher(tokenLib, quantum = 300000000) {
 	// Instruction Token Library
 	this.tokenLib = tokenLib;
@@ -84,32 +18,45 @@ function Dispatcher(tokenLib, quantum = 300000000) {
 		makespan: 0
 	};
 	// Initialize Kernelizer Flyweights
-	for (const tokenName in tokens) this[tokenName] = argsArray => tokens[tokenName].set(argsArray);
+	for (const tokenName in tokenLib) this[tokenName] = argsArray => tokens[tokenName].set(argsArray);
 }
-Dispatcher.prototype.symbols = symbols;
-Dispatcher.prototype.isKernelized = isKernelized;
-Dispatcher.prototype.subroutineAdapter = function (tokenStream, thisArg, argsArray) {
-	const d = new Dispatcher();
-	d.enqueue(tokenStream, thisArg, argsArray);
-	return d.runSync();
+Dispatcher.prototype.isKernelized = function (input) {
+	return ((typeof input) === "object") && (this.tokenLib.symbols.kernSym in input);
 };
-Dispatcher.prototype.createCoroutine = function (functor) {
-	functor[symbols.tokenSym] = functor;
-	functor[symbols.crtSym] = true;
-	return function* (...argsArray) {
-		return hzDisp.subrouitneAdapter(functor[symbols.tokenSym], argsArray);
+Dispatcher.prototype.createCallAdapter = function (functor) {
+	const tokenLib = this.tokenLib;
+	functor[tokenLib.symbols.tokenSym] = functor;
+	return function (...argsArray) {
+		const d = new Dispatcher(tokenLib);
+		d.enqueue(functor[tokenLib.symbols.tokenSym], this, argsArray);
+		return d.runSync();
 	};
+}
+Dispatcher.prototype.createSubroutine = function (functor) {
+	const hzDisp = this;
+	const subroutine = this.createCallAdapter(functor);
+	subroutine[this.tokenLib.symbols.subSym] = true;
+	return subroutine;
 };
 Dispatcher.prototype.createGenerator = function (functor) {
-	functor[symbols.tokenSym] = functor;
-	functor[symbols.genSym] = true;
 	const hzDisp = this;
-	return function (...args) {
-		return hzDisp.subrouitneAdapter(functor[symbols.tokenSym], this, argsArray);
-	};
+	const generator = this.createCallAdapter(functor);
+	generator[this.tokenLib.symbols.genSym] = true;
+	return generator;
+};
+Dispatcher.prototype.createCoroutine = function (functor) {
+	const hzDisp = this;
+	const coroutine = this.createCallAdapter(functor);
+	coroutine[hzDisp.tokenLib.symbols.tokenSym] = functor;
+	coroutine[this.tokenLib.symbols.crtSym] = true;
+	return coroutine;
 };
 Dispatcher.prototype.enqueue = function (functor, thisArg, ...args) {
-	this.stack.push(new Program(functor, thisArg, args));
+	const program = new Program(functor, thisArg, args)
+	if (this.tokenLib.symbols.subSym in functor) program.type = "subroutine";
+	else if (this.tokenLib.symbols.genSym in functor) program.type = "generator";
+	else if (this.tokenLib.symbols.crtSym in functor) program.type = "coroutine";
+	this.stack.push(program);
 };
 Dispatcher.prototype.killLast = function () {
 	if (this.stack.length > 0) {
@@ -122,28 +69,31 @@ Dispatcher.prototype.killAll = function () {
 	this.stop();
 };
 // Processes a kernelized instruction
-Dispatcher.prototype.processState = function (kern) {
+Dispatcher.prototype.processState = function (token) {
 	// Interprets an instruction kernel and performs the indicated actions
-	if (kern.type === "return") {
-		this.killLast();
-		this.lastReturn = kern.value;
-	} else if (kern.type === "yield") {
+	if (token.type === "return") {
+		if (this.stack.length > 0) this.stack.pop().return();
+		this.lastReturn = token.value;
+	} else if (token.type === "yield") {
 		this.stack.pop();
-		this.lastReturn = kern.value;
-	} else if (kern.type === "call") {
+		this.lastReturn = token.value;
+	} else if (token.type === "call") {
 		if (node.args.length === 0) node.args = null;
 		this.enqueue(node.functor, node.thisArg, node.args);
-	} else if (kern.type === "callMethod") {
+	} else if (token.type === "callMethod") {
 		if (node.args.length === 0) node.args = null;
 		this.enqueue(node.object[node.prop], node.object, node.args);
 	} else {
-		throw new TypeError("Illegal Instruction Kernel \"" + kern.type + "\"");
+		throw new TypeError("Illegal Instruction Kernel \"" + token.type + "\"");
 	}
 };
 // Runs a single execution cycle
 Dispatcher.prototype.cycle = function (quantum = null) {
+	console.log("Cycling...");
+	console.log("Current Stack:");
+	console.log(this.stack);
 	const complete = quantum === false;
-	if (!complete && quantum === null) quantum = this.quantum;
+	if (quantum === null) quantum = this.quantum;
 	const start = performance.now();
 	cycle: while (complete || performance.now() - start <= quantum) {
 		if (!this.running || this.stack.length === 0) {
@@ -165,8 +115,7 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 				this.lastReturn = null;
 			}
 			// Return the yielded state of the Program
-			if (!isIterator(state)) state = this.returnValue(state);
-			else if (!isKernelized(state.value)) state = this.returnValue(state.value);
+			if (program.type === "unknown" || !this.isKernelized(state.value)) state = this.tokenLib.returnValue(state.value);
 			if ((state.type === "return" || state.type === "yield") && this.stack.length === 0) {
 				this.lastReturn = state.value;
 				return this.lastReturn;
@@ -174,6 +123,7 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 			// Collect resultant state and process any instructions
 			this.processState(state);
 		} catch (error) {
+			console.error(error);
 			// Uncaught error, so end the program
 			this.killLast();
 			this.lastError = error;
@@ -182,12 +132,17 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 				throw error;
 			}
 		}
+		// Update metrics
+		this.metrics.makeflight = performance.now() - start;
+		this.metrics.makespan += this.metrics.makeflight;
 	}
 };
 Dispatcher.prototype.runComplete = function () {
 	return this.cycle(false);
 };
 Dispatcher.prototype.runSync = function (quantum = null) {
+	console.log("Beginning Synchronous Execution...");
+	this.running = true;
 	while (this.running) this.cycle(quantum);
 	return this.lastReturn;
 };

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const babel = require('babel-core');
-const hzPlugin = require('./plugin.js');
+const hzPlugin = require('./Plugin.js');
 module.exports = function hzCompile(source) {
 	const output = babel.transform(source, {
 		plugins: [hzPlugin],

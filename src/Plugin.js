@@ -1,4 +1,4 @@
-module.exports = function (babel) {
+function Plugin(babel) {
 	const t = babel.types;
 	// Function call without arguments
 	function hzCall(callee) {
@@ -6,7 +6,7 @@ module.exports = function (babel) {
 			t.yieldExpression(
 				t.callExpression(
 					t.memberExpression(
-						t.identifier("tknLib"),
+						t.identifier("userLib"),
 						t.identifier("call")
 					),
 					[
@@ -29,7 +29,7 @@ module.exports = function (babel) {
 			t.yieldExpression(
 				t.callExpression(
 					t.memberExpression(
-						t.identifier("tknLib"),
+						t.identifier("userLib"),
 						t.identifier("callMethod")
 					),
 					[
@@ -51,7 +51,7 @@ module.exports = function (babel) {
 	function hzReturn() {
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("tknLib"),
+				t.identifier("userLib"),
 				t.identifier("returnValue")
 			),
 			[]
@@ -67,7 +67,7 @@ module.exports = function (babel) {
 	function hzYield() {
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("tknLib"),
+				t.identifier("userLib"),
 				t.identifier("yieldValue")
 			),
 			[]
@@ -132,7 +132,7 @@ module.exports = function (babel) {
 			exit: function (path) {
 				if (path.node.generator) path.replaceWith(hzGenerator(path.node));
 				else path.replaceWith(hzCoroutine(path.node));
-				path.node.generator = true;
+				path.node.arguments[0].generator = true;
 				path.skip();
 			}
 		},
@@ -140,7 +140,8 @@ module.exports = function (babel) {
 			exit: function (path) {
 				if (path.node.generator) path.replaceWith(hzGenerator(path.node));
 				else path.replaceWith(hzCoroutine(path.node));
-				path.node.generator = true;
+				path.node.arguments[0].generator = true;
+				path.skip();
 			}
 		},
 		"FunctionDeclaration": {
@@ -156,7 +157,7 @@ module.exports = function (babel) {
 		},
 		"CallExpression": {
 			exit: function (path) {
-				if (path.getFunctionParent().type === "Program") return;
+				//if (path.getFunctionParent().type === "Program") return;
 				if (path.node.callee.type === "MemberExpression") {
 					if (path.node.arguments.length === 0) path.replaceWith(hzCallMethod(
 						path.node.callee.object,
@@ -194,3 +195,4 @@ module.exports = function (babel) {
 	};
 	return { visitor: visitor };
 };
+module.exports = Plugin;
