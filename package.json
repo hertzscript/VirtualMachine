@@ -29,12 +29,6 @@
 	"bugs": {
 		"url": "https://github.com/Floofies/HertzScript/issues"
 	},
-	"devDependencies": {
-		"jasmine": "^2.8.0"
-	},
-	"scripts": {
-		"test": "jasmine spec/Spec.js"
-	},
 	"main": "dist/HertzScript.js",
 	"author": "Dani Glore",
 	"license": "MIT",
