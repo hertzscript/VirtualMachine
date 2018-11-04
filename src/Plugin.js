@@ -79,6 +79,21 @@ function Plugin(babel) {
 		callExp.arguments.push(argExp);
 		return callExp;
 	}
+	// Spawn with argument
+	function hzSpawn(argExp) {
+		return t.callExpression(
+			t.memberExpression(
+				t.identifier("userLib"),
+				t.identifier("spawn")
+			),
+			[t.functionExpression(
+				null,
+				[],
+				t.blockStatement([t.expressionStatement(argExp)]),
+				true
+			)]
+		);
+	}
 	// Coroutine factory
 	function hzCoroutine(funcExp) {
 		return t.callExpression(
@@ -181,17 +196,26 @@ function Plugin(babel) {
 			}
 		},
 		"ReturnStatement": {
-			enter: function (path) {
+			exit: function (path) {
 				if (path.node.argument === null) path.node.argument = hzReturn();
 				else path.node.argument = hzReturnArg(path.node.argument);
 			}
 		},
 		"YieldExpression": {
-			enter: function (path) {
+			exit: function (path) {
 				if (path.node.argument === null) path.node.argument = hzYield();
 				else path.node.argument = hzYieldArg(path.node.argument);
 			}
 		},
+		/*
+		"SpawnExpression": {
+			exit: function (path) {
+				if (path.node.argument === null) return;
+				path.node.type = "YieldExpression"
+				path.node.argument = hzSpawn(path.node.argument);
+			}
+		}
+		*/
 	};
 	return { visitor: visitor };
 };
