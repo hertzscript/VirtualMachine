@@ -6,7 +6,7 @@ function Plugin(babel) {
 			t.yieldExpression(
 				t.callExpression(
 					t.memberExpression(
-						t.identifier("userLib"),
+						t.identifier("hzUserLib"),
 						t.identifier("call")
 					),
 					[
@@ -29,7 +29,7 @@ function Plugin(babel) {
 			t.yieldExpression(
 				t.callExpression(
 					t.memberExpression(
-						t.identifier("userLib"),
+						t.identifier("hzUserLib"),
 						t.identifier("callMethod")
 					),
 					[
@@ -51,7 +51,7 @@ function Plugin(babel) {
 	function hzReturn() {
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("userLib"),
+				t.identifier("hzUserLib"),
 				t.identifier("returnValue")
 			),
 			[]
@@ -67,7 +67,7 @@ function Plugin(babel) {
 	function hzYield() {
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("userLib"),
+				t.identifier("hzUserLib"),
 				t.identifier("yieldValue")
 			),
 			[]
@@ -83,7 +83,7 @@ function Plugin(babel) {
 	function hzSpawn(argExp) {
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("userLib"),
+				t.identifier("hzUserLib"),
 				t.identifier("spawn")
 			),
 			[argExp]
