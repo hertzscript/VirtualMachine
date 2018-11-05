@@ -22,4 +22,5 @@ module.exports = hzDisp.createCoroutine(function* program() {
 
 	const numIterator = (yield userLib.call(genNumberIterator));
 	yield userLib.callMethodArgs(console, "log", [(yield userLib.callArgs(add, [(yield userLib.callMethod(numIterator, "next")).value, (yield userLib.callMethod(numIterator, "next")).value]))]);
+	yield hzUserLib.spawn(test);
 });

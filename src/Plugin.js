@@ -86,12 +86,15 @@ function Plugin(babel) {
 				t.identifier("userLib"),
 				t.identifier("spawn")
 			),
+			[argExp]
+			/*
 			[t.functionExpression(
 				null,
 				[],
 				t.blockStatement([t.expressionStatement(argExp)]),
 				true
 			)]
+			*/
 		);
 	}
 	// Coroutine factory
@@ -174,23 +177,40 @@ function Plugin(babel) {
 			exit: function (path) {
 				//if (path.getFunctionParent().type === "Program") return;
 				if (path.node.callee.type === "MemberExpression") {
-					if (path.node.arguments.length === 0) path.replaceWith(hzCallMethod(
-						path.node.callee.object,
-						path.node.callee.property
-					));
-					else path.replaceWith(hzCallMethodArgs(
-						path.node.callee.object,
-						path.node.callee.property,
-						path.node.arguments
-					));
+					if (path.node.callee.object.type === "Identifier" &&
+						path.node.callee.object.name === "hzUserLib" &&
+						path.node.callee.property.type === "Identifier" &&
+						path.node.callee.property.name === "spawn"
+					) {
+						console.log("spawn");
+						path.replaceWith(t.yieldExpression(
+							path.node
+						));
+					} else {
+						if (path.node.arguments.length === 0) {
+							path.replaceWith(hzCallMethod(
+								path.node.callee.object,
+								path.node.callee.property
+							));
+						} else {
+							path.replaceWith(hzCallMethodArgs(
+								path.node.callee.object,
+								path.node.callee.property,
+								path.node.arguments
+							));
+						}
+					}
 				} else {
-					if (path.node.arguments.length === 0) path.replaceWith(hzCall(
-						path.node.callee
-					));
-					else path.replaceWith(hzCallArgs(
-						path.node.callee,
-						path.node.arguments
-					));
+					if (path.node.arguments.length === 0) {
+						path.replaceWith(hzCall(
+							path.node.callee
+						));
+					} else {
+						path.replaceWith(hzCallArgs(
+							path.node.callee,
+							path.node.arguments
+						));
+					}
 				}
 				path.skip();
 			}
