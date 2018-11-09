@@ -182,10 +182,10 @@ function Plugin(babel) {
 						path.node.callee.property.type === "Identifier" &&
 						path.node.callee.property.name === "spawn"
 					) {
-						console.log("spawn");
 						path.replaceWith(t.yieldExpression(
 							path.node
 						));
+						
 					} else {
 						if (path.node.arguments.length === 0) {
 							path.replaceWith(hzCallMethod(

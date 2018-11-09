@@ -10,5 +10,8 @@ module.exports = function program() {
 	}
 	const numIterator = genNumberIterator();
 	console.log(add(numIterator.next().value, numIterator.next().value));
-	hzUserLib.spawn(test);
+	function testSpawn() {
+		console.log("Spawned!");
+	}
+	spawn testSpawn;
 };

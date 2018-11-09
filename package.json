@@ -33,6 +33,9 @@
 	"author": "Dani Glore",
 	"license": "MIT",
 	"dependencies": {
-		"babel": "^6.23.0"
+		"acorn": "^6.0.4",
+		"acorn-walk": "^6.1.0",
+		"babel-core": "^6.26.3",
+		"escodegen": "^1.11.0"
 	}
 }
