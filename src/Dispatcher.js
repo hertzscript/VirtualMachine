@@ -170,8 +170,9 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 	const complete = quantum === false;
 	if (complete) debugLog("Starting Dispatcher in run-to-completion mode...");
 	if (quantum === null) quantum = this.quantum;
-	const start = performance.now();
-	cycle: while (complete || performance.now() - start <= quantum) {
+	const qStart = performance.now();
+	cycle: while (complete || performance.now() - qStart <= quantum) {
+		const cStart = performance.now();
 		debugLog("Cycling Dispatcher...");
 		debugLog(`Current Metrics:\n\tMakespan: ${this.metrics.makespan}\n\tMakeflight: ${this.metrics.makeflight}`);
 		if (this.stack.length > 0) (debugLog("Stack Snapshot:"), debugTable(this.stack));
@@ -229,7 +230,7 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 			}
 		}
 		// Update metrics
-		this.metrics.makeflight = performance.now() - start;
+		this.metrics.makeflight = performance.now() - cStart;
 		this.metrics.makespan += this.metrics.makeflight;
 	}
 };
