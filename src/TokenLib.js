@@ -1,8 +1,10 @@
 const Kernelizer = require("./Kernelizer.js");
 // HzTokens are unique single-instance objects for wrapping user instructions and data
+const kernSym = Symbol("Kernelization Marker Symbol");
 function HzToken(type, ...argsArray) {
 	const kern = new Kernelizer(...argsArray);
 	kern.type = type;
+	kern[kernSym] = true;
 	return kern;
 }
 // Instruction Token library
@@ -12,11 +14,17 @@ function TokenLib() {
 		// Type 1: Invocation Tokens,
 		//	Wrap userland functors and any operands needed to invoke them.
 		call: new HzToken("call",
+			"functor"
+		),
+		callArgs: new HzToken("callArgs",
 			"functor",
-			"thisArg",
 			"args"
 		),
 		callMethod: new HzToken("callMethod",
+			"object",
+			"property"
+		),
+		callMethodArgs: new HzToken("callMethodArgs",
 			"object",
 			"property",
 			"args"
@@ -32,10 +40,12 @@ function TokenLib() {
 			"arg"
 		),
 		symbols: {
-			kernSym: Symbol("Kernelization Marker Symbol"),
+			kernSym: kernSym,
 			tokenSym: Symbol("Instruction Token Stream Symbol"),
 			// Marks a functor as a generator.
 			genSym: Symbol("Generator Symbol"),
+			// Marks an object as an iterator
+			iterSym: Symbol("Iterator Symbol"),
 			// Marks a functor as a subroutine.
 			srtSym: Symbol("Subroutine Symbol"),
 			// Marks a functor as a coroutine.

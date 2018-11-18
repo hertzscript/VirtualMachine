@@ -52,7 +52,7 @@ function Plugin(babel) {
 		return t.callExpression(
 			t.memberExpression(
 				t.identifier("hzUserLib"),
-				t.identifier("returnValue")
+				t.identifier("return")
 			),
 			[]
 		);
@@ -60,6 +60,7 @@ function Plugin(babel) {
 	// Return with argument
 	function hzReturnArg(argExp) {
 		const callExp = hzReturn();
+		callExp.callee.property.name = "returnValue";
 		callExp.arguments.push(argExp);
 		return callExp;
 	}
@@ -68,15 +69,19 @@ function Plugin(babel) {
 		return t.callExpression(
 			t.memberExpression(
 				t.identifier("hzUserLib"),
-				t.identifier("yieldValue")
+				t.identifier("yield")
 			),
-			[]
+			[t.ObjectExpression([
+				t.ObjectProperty(t.identifier("value"), t.identifier("undefined")),
+				t.ObjectProperty(t.identifier("done"), t.BooleanLiteral(false))
+			])]
 		);
 	}
 	// Yield with argument
 	function hzYieldArg(argExp) {
 		const callExp = hzYield();
-		callExp.arguments.push(argExp);
+		callExp.callee.property.name = "yieldValue";
+		callExp.arguments[0].properties[0].value = argExp;
 		return callExp;
 	}
 	// Spawn with argument
@@ -185,7 +190,7 @@ function Plugin(babel) {
 						path.replaceWith(t.yieldExpression(
 							path.node
 						));
-						
+
 					} else {
 						if (path.node.arguments.length === 0) {
 							path.replaceWith(hzCallMethod(
@@ -217,8 +222,19 @@ function Plugin(babel) {
 		},
 		"ReturnStatement": {
 			exit: function (path) {
+				const parentPath = path.getFunctionParent();
 				if (path.node.argument === null) path.node.argument = hzReturn();
 				else path.node.argument = hzReturnArg(path.node.argument);
+				if (parentPath.node.generator) path.node.argument.arguments = [t.ObjectExpression([
+					t.ObjectProperty(
+						t.identifier("value"),
+						path.node.argument.arguments[0]
+					),
+					t.ObjectProperty(
+						t.identifier("done"),
+						t.BooleanLiteral(true)
+					)
+				])];
 			}
 		},
 		"YieldExpression": {

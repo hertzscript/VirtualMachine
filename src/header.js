@@ -3,7 +3,7 @@ if (!("tknLib" in global)) {
 	const hzTokenLib = require("./TokenLib.js");
 	global.hzTknLib = new hzTokenLib();
 	global.hzUserLib = {};
-	for (const name in global.hzTknLib) global.hzUserLib[name] = (...args) => global.hzTknLib[name].set(...args);
+	for (const name in global.hzTknLib) global.hzUserLib[name] = (...args) => global.hzTknLib[name].set(args);
 }
 const hzTknLib = global.hzTknLib;
 const hzUserLib = global.hzUserLib;
