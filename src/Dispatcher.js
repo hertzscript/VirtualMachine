@@ -1,13 +1,17 @@
 const performance = require('perf_hooks').performance;
 const debug = false;
+const dBuffer = [];
 function debugLog(str) {
-	if (debug) console.log(str);
+	if (debug) dBuffer.push(["log", str]);
 }
 function debugTable(obj) {
-	if (debug) console.table(obj);
+	if (debug) dBuffer.push(["table", obj]);
 }
 function debugError(error) {
-	if (debug) console.error(error);
+	if (debug) dBuffer.push(["error", error]);
+}
+function debugPrint() {
+	for (const data of dBuffer) console[data[0]](data[1]);
 }
 // Wraps a Function or GeneratorFunction, and stores metadata about it
 function Program(functor, thisArg = null, args = []) {
@@ -235,25 +239,32 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 	}
 };
 Dispatcher.prototype.runComplete = function () {
-	return this.runSync(false);
+	const v = this.runSync(false);
+	if (debug) debugPrint();
+	return v;
 };
 Dispatcher.prototype.runSync = function (quantum = null) {
 	debugLog("Beginning synchronous execution...");
 	this.running = true;
 	while (this.running) this.cycle(quantum);
+	if (debug) debugPrint();
 	return this.lastReturn;
 };
 Dispatcher.prototype.runAsync = function (interval = 300, quantum = null) {
 	return new Promise(function (resolve) {
 		const asyncRunner = function () {
 			this.runSync(quantum);
-			if (!this.running) return resolve(this.lastReturn);
+			if (!this.running) {
+				if (debug) debugPrint();
+				return resolve(this.lastReturn);
+			}
 			setTimeout(asyncRunner, interval);
 		};
 	});
 };
 Dispatcher.prototype.runIterator = function* (quantum = null) {
 	while (this.runSync()) yield;
+	if (debug) debugPrint();
 };
 Dispatcher.prototype.stop = function () {
 	this.running = false;
