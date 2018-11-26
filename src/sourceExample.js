@@ -8,7 +8,7 @@ module.exports = function testProgram() {
 	console.log("\x1b[31m%s\x1b[0m", iter.next().value);
 	
 	console.log("Hello World");
-	*/
+	
 	function genNumber() {
 		return Math.random().toString().substring(2);
 	}
@@ -24,6 +24,12 @@ module.exports = function testProgram() {
 	function testSpawn() {
 		console.log("Spawned!");
 	}
-	
-	//spawn testSpawn;
+	*/
+	spawn("test"); // identifier
+	var spawn = 123; // identifier
+	var spawn; // identifier
+	spawn = 123; //identifier
+	spawn thing; // keyword
+	spawn function() { }; // keyword
+	spawn(hello, world) => { };// keyword
 };
