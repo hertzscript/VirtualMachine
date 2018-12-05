@@ -23,7 +23,6 @@ module.exports = function HzParserFactory(Parser) {
 			this.next();
 			const spawnExpr = this.startNodeAt(this.start, this.startLoc);
 			spawnExpr.delegate = false;
-			this.potentialArrowAt = this.start;
 			const atom = this.parseExprAtom(refDestructuringErrors);
 			const expr = this.parseSubscripts(atom, this.start, this.startLoc, false);
 			spawnExpr.argument = expr;
