@@ -97,16 +97,11 @@ function Plugin(babel) {
 	}
 	// Spawn with arguments
 	function hzSpawnArgs(spawnExp) {
-		spawnExp.arguments = [
-			spawnExp.arguments[0].callee,
-			t.arrayExpression([
-				...spawnExp.arguments[0].arguments
-			])
-		];
-		spawnExp.callee.property.name = "spawnArgs";
-		return t.yieldExpression(
-			spawnExp
-		);
+		const args = spawnExp.arguments[0].arguments;
+		spawnExp = hzSpawn(spawnExp);
+		spawnExp.argument.arguments.push(t.arrayExpression(args));
+		spawnExp.argument.callee.property.name = "spawnArgs";
+		return spawnExp;
 	}
 	// Spawn method without arguments
 	function hzSpawnMethod(spawnExp) {
@@ -121,17 +116,11 @@ function Plugin(babel) {
 	}
 	// Spawn method with arguments
 	function hzSpawnMethodArgs(spawnExp) {
-		spawnExp.arguments = [
-			spawnExp.arguments[0].callee.object,
-			t.stringLiteral(spawnExp.arguments[0].callee.property.name),
-			t.arrayExpression([
-				...spawnExp.arguments[0].arguments
-			])
-		];
-		spawnExp.callee.property.name = "spawnMethodArgs";
-		return t.yieldExpression(
-			spawnExp
-		);
+		const args = spawnExp.arguments[0].arguments;
+		spawnExp = hzSpawnMethod(spawnExp);
+		spawnExp.argument.arguments.push(t.arrayExpression(args));
+		spawnExp.argument.callee.property.name = "spawnMethodArgs";
+		return spawnExp;
 	}
 	// Coroutine factory
 	function hzCoroutine(funcExp) {
@@ -235,7 +224,6 @@ function Plugin(babel) {
 						path.replaceWith(hzSpawn(path.node));
 					}
 					const callee = path.node.argument.arguments[0];
-					console.log(path.node.argument.arguments);
 					if (callee.type === "FunctionExpression"
 						|| callee.type === "ArrowFunctionExpression") {
 						if (callee.generator) {
