@@ -17,7 +17,6 @@ module.exports = function HzParserFactory(Parser) {
 				|| this.input.slice(next, next + 1) === "="
 				|| !isIdentifierChar(this.input[next].charCodeAt(0))
 			) {
-				console.log("Spawn not seen");
 				return super.parseMaybeAssign(noIn, refDestructuringErrors);
 			}
 			this.next();
