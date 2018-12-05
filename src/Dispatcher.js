@@ -1,18 +1,21 @@
 const performance = require('perf_hooks').performance;
 const debug = false;
-const dBuffer = [];
+if (debug) require("console-buffer")(4096);
 function debugLog(str) {
-	if (debug) dBuffer.push(["log", str]);
+	if (debug) console.log(str);
 }
 function debugTable(obj) {
-	if (debug) dBuffer.push(["table", obj]);
+	if (debug) console.table(obj);
 }
 function debugError(error) {
-	if (debug) dBuffer.push(["error", error]);
+	if (debug) console.error(error);
 }
-function debugPrint() {
-	for (const data of dBuffer) console[data[0]](data[1]);
+function ProgramStack() {
+	this.stack = [];
+	this.lastReturn = null;
+	this.lastError = null;
 }
+// Process Control Block
 // Wraps a Function or GeneratorFunction, and stores metadata about it
 function Program(functor, thisArg = null, args = []) {
 	this.type = "unknown";
@@ -178,7 +181,8 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 	cycle: while (complete || performance.now() - qStart <= quantum) {
 		const cStart = performance.now();
 		debugLog("Cycling Dispatcher...");
-		debugLog(`Current Metrics:\n\tMakespan: ${this.metrics.makespan}\n\tMakeflight: ${this.metrics.makeflight}`);
+		debugLog("Current Metrics:");
+		debugLog(this.metrics);
 		if (this.stack.length > 0) (debugLog("Stack Snapshot:"), debugTable(this.stack));
 		else debugLog("Stack is Empty");
 		if (!this.running || this.stack.length === 0) {
@@ -239,32 +243,25 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 	}
 };
 Dispatcher.prototype.runComplete = function () {
-	const v = this.runSync(false);
-	if (debug) debugPrint();
-	return v;
+	return this.runSync(false);
 };
 Dispatcher.prototype.runSync = function (quantum = null) {
 	debugLog("Beginning synchronous execution...");
 	this.running = true;
 	while (this.running) this.cycle(quantum);
-	if (debug) debugPrint();
 	return this.lastReturn;
 };
 Dispatcher.prototype.runAsync = function (interval = 300, quantum = null) {
 	return new Promise(function (resolve) {
 		const asyncRunner = function () {
 			this.runSync(quantum);
-			if (!this.running) {
-				if (debug) debugPrint();
-				return resolve(this.lastReturn);
-			}
+			if (!this.running) return resolve(this.lastReturn);
 			setTimeout(asyncRunner, interval);
 		};
 	});
 };
 Dispatcher.prototype.runIterator = function* (quantum = null) {
 	while (this.runSync()) yield;
-	if (debug) debugPrint();
 };
 Dispatcher.prototype.stop = function () {
 	this.running = false;

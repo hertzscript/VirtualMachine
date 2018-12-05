@@ -36,7 +36,7 @@
 		"acorn": "^6.0.4",
 		"acorn-walk": "^6.1.1",
 		"babel-core": "^6.26.3",
-		"escodegen": "^1.11.0",
-		"console-buffer": "0.0.3"
+		"console-buffer": "^1.0.1",
+		"escodegen": "^1.11.0"
 	}
 }
