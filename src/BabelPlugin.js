@@ -84,22 +84,53 @@ function Plugin(babel) {
 		callExp.arguments[0].properties[0].value = argExp;
 		return callExp;
 	}
-	// Spawn with argument
-	function hzSpawn(argExp) {
-		return t.callExpression(
-			t.memberExpression(
-				t.identifier("hzUserLib"),
-				t.identifier("spawn")
-			),
-			[argExp]
-			/*
-			[t.functionExpression(
-				null,
-				[],
-				t.blockStatement([t.expressionStatement(argExp)]),
-				true
-			)]
-			*/
+	// Spawn without arguments
+	function hzSpawn(spawnExp) {
+		if (spawnExp.arguments[0].type === "CallExpression") {
+			spawnExp.arguments = [spawnExp.arguments[0].callee];
+		} else {
+			spawnExp.arguments = [spawnExp.arguments[0]];
+		}
+		return t.yieldExpression(
+			spawnExp
+		);
+	}
+	// Spawn with arguments
+	function hzSpawnArgs(spawnExp) {
+		spawnExp.arguments = [
+			spawnExp.arguments[0].callee,
+			t.arrayExpression([
+				...spawnExp.arguments[0].arguments
+			])
+		];
+		spawnExp.callee.property.name = "spawnArgs";
+		return t.yieldExpression(
+			spawnExp
+		);
+	}
+	// Spawn method without arguments
+	function hzSpawnMethod(spawnExp) {
+		spawnExp.arguments = [
+			spawnExp.arguments[0].callee.object,
+			t.stringLiteral(spawnExp.arguments[0].callee.property.name)
+		];
+		spawnExp.callee.property.name = "spawnMethod";
+		return t.yieldExpression(
+			spawnExp
+		);
+	}
+	// Spawn method with arguments
+	function hzSpawnMethodArgs(spawnExp) {
+		spawnExp.arguments = [
+			spawnExp.arguments[0].callee.object,
+			t.stringLiteral(spawnExp.arguments[0].callee.property.name),
+			t.arrayExpression([
+				...spawnExp.arguments[0].arguments
+			])
+		];
+		spawnExp.callee.property.name = "spawnMethodArgs";
+		return t.yieldExpression(
+			spawnExp
 		);
 	}
 	// Coroutine factory
@@ -179,31 +210,58 @@ function Plugin(babel) {
 			}
 		},
 		"CallExpression": {
+			enter: function (path) {
+				if (path.node.callee.type === "MemberExpression" &&
+					path.node.callee.object.type === "Identifier" &&
+					path.node.callee.object.name === "hzUserLib" &&
+					path.node.callee.property.type === "Identifier" &&
+					path.node.callee.property.name === "spawn"
+				) {
+					if (path.node.arguments[0].type === "CallExpression") {
+						if (path.node.arguments[0].callee.type === "MemberExpression") {
+							if (path.node.arguments[0].arguments.length > 0) {
+								path.replaceWith(hzSpawnMethodArgs(path.node));
+							} else {
+								path.replaceWith(hzSpawnMethod(path.node));
+							}
+						} else {
+							if (path.node.arguments[0].arguments.length > 0) {
+								path.replaceWith(hzSpawnArgs(path.node));
+							} else {
+								path.replaceWith(hzSpawn(path.node));
+							}
+						}
+					} else {
+						path.replaceWith(hzSpawn(path.node));
+					}
+					const callee = path.node.argument.arguments[0];
+					console.log(path.node.argument.arguments);
+					if (callee.type === "FunctionExpression"
+						|| callee.type === "ArrowFunctionExpression") {
+						if (callee.generator) {
+							path.node.argument.arguments[0] = hzGenerator(callee);
+						} else {
+							path.node.argument.arguments[0] = hzCoroutine(callee);
+							callee.generator = true;
+						}
+					}
+					path.skip();
+				}
+			},
 			exit: function (path) {
 				//if (path.getFunctionParent().type === "Program") return;
 				if (path.node.callee.type === "MemberExpression") {
-					if (path.node.callee.object.type === "Identifier" &&
-						path.node.callee.object.name === "hzUserLib" &&
-						path.node.callee.property.type === "Identifier" &&
-						path.node.callee.property.name === "spawn"
-					) {
-						path.replaceWith(t.yieldExpression(
-							path.node
+					if (path.node.arguments.length === 0) {
+						path.replaceWith(hzCallMethod(
+							path.node.callee.object,
+							path.node.callee.property
 						));
-
 					} else {
-						if (path.node.arguments.length === 0) {
-							path.replaceWith(hzCallMethod(
-								path.node.callee.object,
-								path.node.callee.property
-							));
-						} else {
-							path.replaceWith(hzCallMethodArgs(
-								path.node.callee.object,
-								path.node.callee.property,
-								path.node.arguments
-							));
-						}
+						path.replaceWith(hzCallMethodArgs(
+							path.node.callee.object,
+							path.node.callee.property,
+							path.node.arguments
+						));
 					}
 				} else {
 					if (path.node.arguments.length === 0) {

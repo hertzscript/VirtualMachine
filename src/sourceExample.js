@@ -25,11 +25,20 @@ module.exports = function testProgram() {
 		console.log("Spawned!");
 	}
 	*/
-	spawn("test"); // identifier
-	var spawn = 123; // identifier
-	var spawn; // identifier
-	spawn = 123; //identifier
-	spawn thing; // keyword
-	spawn function() { }; // keyword
-	spawn(hello, world) => { };// keyword
+	spawn("test"); // callExpression
+	spawn     ("test"); // callExpression
+	thing.spawn("test"); // callExpression (memberExpression)
+	spawn.thing("test"); // callExpression (memberExpression)
+	var spawn = 123; // declaration identifier assignment
+	var spawn; // declaration identifier
+	spawn = 123; // identifier assignment
+	spawn thing; // keyword identifier
+	spawn thing(); // keyword callExpression
+	spawn thing("test"); // keyword callExpression
+	spawn obj.thing(); // keyword callExpression (memberExpression)
+	spawn obj.thing("test"); // keyword callExpression (memberExpression)
+	//spawn function() { }; // keyword functionExpression
+	//spawn async (hello, world) => {}; // keyword keyword arrowFunctionExpression
+	//spawn hello => {}; // keyword arrowFunctionExpression
+	//spawn (hello, world) => {}; // keyword arrowFunctionExpression
 };
