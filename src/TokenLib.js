@@ -39,6 +39,22 @@ function TokenLib() {
 		yieldValue: new HzToken("yieldValue",
 			"arg"
 		),
+		spawn: new HzToken("spawn",
+			"functor"
+		),
+		spawnArgs: new HzToken("spawn",
+			"functor",
+			"args"
+		),
+		spawnMethod: new HzToken("spawn",
+			"object",
+			"property"
+		),
+		spawnMethodArgs: new HzToken("spawn",
+			"object",
+			"property",
+			"args"
+		),
 		symbols: {
 			kernSym: kernSym,
 			tokenSym: Symbol("Instruction Token Stream Symbol"),
