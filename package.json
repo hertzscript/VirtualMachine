@@ -1,7 +1,7 @@
 {
 	"name": "hertzscript",
 	"version": "1.0.0",
-	"description": "A source-to-source optimizing compiler which produces preemptable JavaScript.",
+	"description": "A system which produces and executes preemptible JavaScript coroutines.",
 	"keywords": [
 		"compiler",
 		"javascript",
@@ -34,8 +34,9 @@
 	"license": "MIT",
 	"dependencies": {
 		"acorn": "^6.0.4",
-		"acorn-walk": "^6.1.0",
+		"acorn-walk": "^6.1.1",
 		"babel-core": "^6.26.3",
-		"escodegen": "^1.11.0"
+		"escodegen": "^1.11.0",
+		"console-buffer": "0.0.3"
 	}
 }
