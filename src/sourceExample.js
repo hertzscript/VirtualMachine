@@ -6,9 +6,9 @@ module.exports = function testProgram() {
 	}
 	const iter = myGenerator();
 	console.log("\x1b[31m%s\x1b[0m", iter.next().value);
-	
+
 	console.log("Hello World");
-	
+	*/
 	function genNumber() {
 		return Math.random().toString().substring(2);
 	}
@@ -18,13 +18,18 @@ module.exports = function testProgram() {
 	function add(num1, num2) {
 		return num1 + num2;
 	}
-	const numIterator = genNumberIterator();
-	console.log("Generating 10 random numbers...");
-	for (var loc = 0; loc < 10; loc++) console.log(add(numIterator.next().value, numIterator.next().value));
-	function testSpawn() {
-		console.log("Spawned!");
+	var counter = 0;
+	function logNumbers() {
+		const id = counter + 1;
+		counter++;
+		const numIterator = genNumberIterator();
+		console.log("Generating 10 random numbers...");
+		for (var loc = 0; loc < 10; loc++) console.log("Coroutine " + id + " says: " + add(numIterator.next().value, numIterator.next().value));
 	}
-	*/
+	spawn logNumbers();
+	spawn logNumbers();
+	spawn logNumbers();
+	/*
 	spawn("test"); // callExpression
 	spawn     ("test"); // callExpression
 	thing.spawn("test"); // callExpression (memberExpression)
@@ -37,6 +42,7 @@ module.exports = function testProgram() {
 	spawn thing("test"); // keyword callExpression
 	spawn obj.thing(); // keyword callExpression (memberExpression)
 	spawn obj.thing("test"); // keyword callExpression (memberExpression)
+	*/
 	//spawn function() { }; // keyword functionExpression
 	//spawn async (hello, world) => {}; // keyword keyword arrowFunctionExpression
 	//spawn hello => {}; // keyword arrowFunctionExpression

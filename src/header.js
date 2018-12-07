@@ -1,5 +1,5 @@
 var global = typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : typeof window !== 'undefined' ? window : {};
-if (!("tknLib" in global)) {
+if (!("hzTknLib" in global)) {
 	const hzTokenLib = require("./TokenLib.js");
 	global.hzTknLib = new hzTokenLib();
 	global.hzUserLib = {};
