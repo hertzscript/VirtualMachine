@@ -3,23 +3,24 @@
 	"version": "1.0.0",
 	"description": "A system which produces and executes preemptible JavaScript coroutines.",
 	"keywords": [
-		"compiler",
 		"javascript",
 		"preemption",
 		"preemptive",
-		"transpiler",
-		"thread",
+		"preemptible",
 		"interruption",
-		"javascript-source",
+		"green-threads",
+		"coroutines",
+		"coroutine",
+		"coroutine-dispatcher",
+		"concurrency",
+		"concurrent",
+		"concurrent-programming",
+		"concurrent-javascript",
+		"stackless-coroutines",
+		"multitasking",
 		"cooperative-multitasking",
 		"preemptive-multitasking",
-		"cooperative-preemtive-multitasking",
-		"generator",
-		"generators",
-		"generator-functions",
-		"generator-function",
-		"yield-operator",
-		"yield"
+		"voluntary-preemtive-multitasking"
 	],
 	"homepage": "https://github.com/Floofies/HertzScript#readme",
 	"repository": {
@@ -29,7 +30,7 @@
 	"bugs": {
 		"url": "https://github.com/Floofies/HertzScript/issues"
 	},
-	"main": "dist/HertzScript.js",
+	"main": "dist/Dispatcher.js",
 	"author": "Dani Glore",
 	"license": "MIT",
 	"dependencies": {
