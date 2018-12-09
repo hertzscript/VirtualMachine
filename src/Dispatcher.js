@@ -1,5 +1,5 @@
 const performance = require('perf_hooks').performance;
-const debug = false;
+const debug = true;
 if (debug) require("console-buffer")(4096);
 function debugLog(str) {
 	if (debug) console.log(str);
@@ -97,6 +97,11 @@ Dispatcher.prototype.createCoroutine = function (functor) {
 	const coroutine = this.createCallAdapter(functor);
 	functor[this.tokenLib.symbols.crtSym] = true;
 	coroutine[this.tokenLib.symbols.crtSym] = true;
+	return coroutine;
+};
+Dispatcher.prototype.createArrowCoroutine = function (functor, thisArg) {
+	const coroutine = this.createCoroutine(functor);
+	coroutine[this.tokenLib.symbols.tokenSym] = coroutine[this.tokenLib.symbols.tokenSym].bind(thisArg);
 	return coroutine;
 };
 Dispatcher.prototype.printProgram = function (program) {

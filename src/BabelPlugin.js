@@ -47,6 +47,28 @@ function Plugin(babel) {
 		seqExp.expressions[0].argument.arguments.push(t.arrayExpression(argsArray));
 		return seqExp;
 	}
+	function hzNew(callee) {
+		const seqExp = hzCall(callee);
+		seqExp.expressions[0].argument.callee.property.name = "new";
+		return seqExp;
+	}
+	function hzNewArgs(name, argsArray) {
+		const seqExp = hzNew(name);
+		seqExp.expressions[0].argument.arguments.push(t.arrayExpression(argsArray));
+		seqExp.expressions[0].argument.callee.property.name = "newArgs";
+		return seqExp;
+	}
+	function hzMethodNew(object, prop) {
+		const seqExp = hzCallMethod(callee);
+		seqExp.expressions[0].argument.callee.property.name = "newMethod";
+		return seqExp;
+	}
+	function hzMethodNewArgs(object, prop, argsArray) {
+		const seqExp = hzMethodNew(object, prop);
+		seqExp.expressions[0].argument.arguments.push(t.arrayExpression(argsArray));
+		seqExp.expressions[0].argument.callee.property.name = "newMethodArgs";
+		return seqExp;
+	}
 	// Return without argument
 	function hzReturn() {
 		return t.callExpression(
@@ -132,6 +154,25 @@ function Plugin(babel) {
 			[funcExp]
 		);
 	}
+	// ArrowFunction Coroutine factory
+	function hzArrowCoroutine(funcExp) {
+		funcExp.type = "FunctionExpression";
+		if (funcExp.body.type !== "BlockStatement") {
+			funcExp.body = t.blockStatement([
+				t.expressionStatement(funcExp.body)
+			]);
+		}
+		return t.callExpression(
+			t.memberExpression(
+				t.identifier("hzDisp"),
+				t.identifier("createArrowCoroutine")
+			),
+			[
+				funcExp,
+				t.identifier("this")
+			]
+		);
+	}
 	// Generator factory
 	function hzGenerator(funcExp) {
 		return t.callExpression(
@@ -181,8 +222,7 @@ function Plugin(babel) {
 		},
 		"ArrowFunctionExpression": {
 			exit: function (path) {
-				if (path.node.generator) path.replaceWith(hzGenerator(path.node));
-				else path.replaceWith(hzCoroutine(path.node));
+				path.replaceWith(hzArrowCoroutine(path.node));
 				path.node.arguments[0].generator = true;
 				path.skip();
 			}
@@ -196,6 +236,36 @@ function Plugin(babel) {
 				if (Array.isArray(parentPath.node.body)) parentPath.node.body.unshift(varDec);
 				else parentPath.node.body.body.unshift(varDec);
 				path.remove();
+			}
+		},
+		"NewExpression": {
+			exit: function (path) {
+				if (path.node.callee.type === "MemberExpression") {
+					if (path.node.arguments.length === 0) {
+						path.replaceWith(hzNewMethod(
+							path.node.callee.object,
+							path.node.callee.property
+						));
+					} else {
+						path.replaceWith(hzNewMethodArgs(
+							path.node.callee.object,
+							path.node.callee.property,
+							path.node.arguments
+						));
+					}
+				} else {
+					if (path.node.arguments.length === 0) {
+						path.replaceWith(hzNew(
+							path.node.callee
+						));
+					} else {
+						path.replaceWith(hzNewArgs(
+							path.node.callee,
+							path.node.arguments
+						));
+					}
+				}
+				path.skip();
 			}
 		},
 		"CallExpression": {
