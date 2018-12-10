@@ -29,6 +29,22 @@ function TokenLib() {
 			"property",
 			"args"
 		),
+		new: new HzToken("new",
+			"functor"
+		),
+		newArgs: new HzToken("newArgs",
+			"functor",
+			"args"
+		),
+		newMethod: new HzToken("newMethod",
+			"object",
+			"property"
+		),
+		newMethodArgs: new HzToken("newMethodArgs",
+			"object",
+			"property",
+			"args"
+		),
 		// Type 2: Data Tokens,
 		//	Wrap arbitrary userland datum when returning or yielding.
 		return: new HzToken("return"),
@@ -42,15 +58,15 @@ function TokenLib() {
 		spawn: new HzToken("spawn",
 			"functor"
 		),
-		spawnArgs: new HzToken("spawn",
+		spawnArgs: new HzToken("spawnArgs",
 			"functor",
 			"args"
 		),
-		spawnMethod: new HzToken("spawn",
+		spawnMethod: new HzToken("spawnMethod",
 			"object",
 			"property"
 		),
-		spawnMethodArgs: new HzToken("spawn",
+		spawnMethodArgs: new HzToken("spawnMethodArgs",
 			"object",
 			"property",
 			"args"
@@ -66,6 +82,8 @@ function TokenLib() {
 			srtSym: Symbol("Subroutine Symbol"),
 			// Marks a functor as a coroutine.
 			crtSym: Symbol("Coroutine Symbol"),
+			// Marks a functor as a constructor
+			conSym: Symbol("Constructor Symbol"),
 			// Proprietary Null. Builtin null considered userland datum.
 			nullSym: Symbol("Null Value Symbol")
 		}

@@ -10,29 +10,18 @@ const hzUserLib = global.hzUserLib;
 const hzDispatcher = require("./Dispatcher.js");
 const hzDisp = new hzDispatcher(hzTknLib);
 module.exports = hzDisp.createCoroutine(function* testProgram() {
-    var logNumbers = hzDisp.createCoroutine(function* logNumbers() {
-        const id = counter + 1;
-        counter++;
-        const numIterator = (yield hzUserLib.call(genNumberIterator));
-        yield hzUserLib.callMethodArgs(console, 'log', ['Generating 10 random numbers...']);
-        for (var loc = 0; loc < 10; loc++) yield hzUserLib.callMethodArgs(console, 'log', ['Coroutine ' + id + ' says: ' + (yield hzUserLib.callArgs(add, [(yield hzUserLib.callMethod(numIterator, 'next')).value, (yield hzUserLib.callMethod(numIterator, 'next')).value]))]);
+    var sleepAndSay = hzDisp.createCoroutine(function* sleepAndSay(message, ms) {
+        yield hzUserLib.callArgs(sleep, [ms]);
+        yield hzUserLib.callMethodArgs(console, 'log', [message]);
     });
-    var add = hzDisp.createCoroutine(function* add(num1, num2) {
-        return hzUserLib.returnValue(num1 + num2);
-    });
-    var genNumberIterator = hzDisp.createGenerator(function* genNumberIterator() {
-        while (true) yield hzUserLib.yieldValue({
-            value: (yield hzUserLib.call(genNumber)),
-            done: false
-        });
-    });
-    var genNumber = hzDisp.createCoroutine(function* genNumber() {
-        return hzUserLib.returnValue((yield hzUserLib.callMethodArgs((yield hzUserLib.callMethod((yield hzUserLib.callMethod(Math, 'random')), 'toString')), 'substring', [2])));
+    var sleep = hzDisp.createCoroutine(function* sleep(ms) {
+        const end = (yield hzUserLib.callMethod(performance, 'now')) + ms;
+        yield hzUserLib.callMethodArgs(console, 'log', ['Beginning to sleep for ' + ms + 'ms']);
+        while ((yield hzUserLib.callMethod(performance, 'now')) < end);
     });
 
-    var counter = 0;
+    const performance = (yield hzUserLib.callArgs(require, ['perf_hooks'])).performance;
 
-    yield hzUserLib.spawn(logNumbers);
-    yield hzUserLib.spawn(logNumbers);
-    yield hzUserLib.spawn(logNumbers);
+    yield hzUserLib.spawnArgs(sleepAndSay, ['Hello World 1000ms', 5000]);
+    yield hzUserLib.spawnArgs(sleepAndSay, ['Hello World 500ms', 500]);
 });

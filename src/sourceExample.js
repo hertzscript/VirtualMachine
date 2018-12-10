@@ -1,4 +1,28 @@
 module.exports = function testProgram() {
+	const performance = require("perf_hooks").performance;
+	function sleep(ms) {
+		const end = performance.now() + ms;
+		console.log("Beginning to sleep for " + ms + "ms");
+		while (performance.now() < end);
+	}
+	function sleepAndSay(message, ms) {
+		sleep(ms);
+		console.log(message);
+	}
+	spawn sleepAndSay("Hello World 1000ms", 5000);
+	spawn sleepAndSay("Hello World 500ms", 500);
+	/*
+	const testClass = function () {
+		this.prop = "Hello World!";
+		this.arrow = () => console.log(this.prop);
+	}
+	testClass.prototype.test = function () {
+		console.log(this.prop);
+	}
+	const test = new testClass();
+	test.test();
+	test.arrow();
+	*/
 	/*
 	function* myGenerator() {
 		yield 123;
@@ -9,6 +33,7 @@ module.exports = function testProgram() {
 
 	console.log("Hello World");
 	*/
+	/*
 	function genNumber() {
 		return Math.random().toString().substring(2);
 	}
@@ -29,6 +54,7 @@ module.exports = function testProgram() {
 	spawn logNumbers();
 	spawn logNumbers();
 	spawn logNumbers();
+	*/
 	/*
 	spawn("test"); // callExpression
 	spawn     ("test"); // callExpression

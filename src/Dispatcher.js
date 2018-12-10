@@ -1,5 +1,5 @@
 const performance = require('perf_hooks').performance;
-const debug = true;
+const debug = false;
 if (debug) require("console-buffer")(4096);
 function debugLog(str) {
 	if (debug) console.log(str);
@@ -114,7 +114,8 @@ Dispatcher.prototype.printProgram = function (program) {
 Dispatcher.prototype.createProgram = function (functor, thisArg = null, args = []) {
 	if (args === null) args = [];
 	const program = new Program(functor, thisArg, args);
-	if (this.tokenLib.symbols.subSym in functor) program.type = "subroutine";
+	if (this.tokenLib.symbols.conSym in functor) program.type = "constructor";
+	else if (this.tokenLib.symbols.subSym in functor) program.type = "subroutine";
 	else if (this.tokenLib.symbols.genSym in functor) program.type = "generator";
 	else if (this.tokenLib.symbols.iterSym in functor) program.type = "iterator";
 	else if (this.tokenLib.symbols.crtSym in functor) program.type = "coroutine";
@@ -134,11 +135,11 @@ Dispatcher.prototype.initProgram = function (program, thisArg = null, args = [])
 	}
 	return program.image.apply(thisArg, args);
 };
-Dispatcher.prototype.callProgram = function (program, nextValue) {
+Dispatcher.prototype.callProgram = function (program, nextValue, thisArg = null) {
 	if (program.type === "unknown") return this.initProgram(program);
 	if (program.type === "generator") return this.createIterator(this.initProgram(program));
 	if (program.type === "iterator") {
-		if (this.activeBlock.lastReturn !== null) return this.initProgram(program, null, [this.activeBlock.lastReturn]);
+		if (this.activeBlock.lastReturn !== null) return this.initProgram(program, thisArg, [this.activeBlock.lastReturn]);
 		return this.initProgram(program);
 	}
 	if (program.instance === null) program.instance = this.initProgram(program);
@@ -203,7 +204,19 @@ Dispatcher.prototype.processState = function (token) {
 	else if (token.type === "callArgs") this.enqueue(token.functor, null, token.args);
 	else if (token.type === "callMethod") this.enqueue(token.object[token.property], token.object, null);
 	else if (token.type === "callMethodArgs") this.enqueue(token.object[token.property], token.object, token.args);
-	else if (token.type === "spawn") this.spawn(token.functor);
+	else if (token.type === "new") {
+		token.functor[this.tokenLib.symbols.conSym] = true;
+		this.enqueue(token.functor, Object.create(token.functor.prototype));
+	} else if (token.type === "newArgs") {
+		token.functor[this.tokenLib.symbols.conSym] = true;
+		this.enqueue(token.functor, Object.create(token.functor.prototype), token.args);
+	} else if (token.type === "newMethod") {
+		token.functor[this.tokenLib.symbols.conSym] = true;
+		this.enqueue(function() { return token.object[token.prop].call(this) }, Object.create(token.functor.prototype));
+	} else if (token.type === "newMethodArgs") {
+		token.functor[this.tokenLib.symbols.conSym] = true;
+		this.enqueue(function(...args) { return token.object[token.prop].apply(this, args) }, Object.create(token.functor.prototype));
+	} else if (token.type === "spawn") this.spawn(token.functor);
 	else if (token.type === "spawnArgs") this.spawn(token.functor, null, token.args);
 	else if (token.type === "spawnMethod") this.spawn(token.object[token.property], token.object);
 	else if (token.type === "spawnMethodArgs") this.spawn(token.object[token.property], token.object, token.args);
@@ -232,6 +245,7 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 			if (this.blockIndex >= this.blocks.length || this.blockIndex < 0) this.blockIndex = 0;
 			this.activeBlock = this.blocks[this.blockIndex];
 			const block = this.activeBlock;
+			debugLog("\n\x1b[32mControlBlock " + this.blockIndex + " loaded\x1b[0m");
 			if (block.stack.length === 0) {
 				this.blocks.splice(this.blockIndex, 1);
 				this.blockIndex--;
@@ -274,6 +288,9 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 					} else {
 						state = state.value;
 					}
+				}
+				if (program.type === "constructor" && state !== this.tokenLib.returnValue) {
+					state = this.tokenLib.returnValue.set([program.thisArg]);
 				}
 				// Collect resultant state and process any instructions
 				this.processState(state);
