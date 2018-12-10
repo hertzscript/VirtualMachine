@@ -289,7 +289,7 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 						state = state.value;
 					}
 				}
-				if (program.type === "constructor" && state !== this.tokenLib.returnValue) {
+				if (program.type === "constructor" && state === this.tokenLib.return) {
 					state = this.tokenLib.returnValue.set([program.thisArg]);
 				}
 				// Collect resultant state and process any instructions
