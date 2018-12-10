@@ -211,11 +211,12 @@ Dispatcher.prototype.processState = function (token) {
 		token.functor[this.tokenLib.symbols.conSym] = true;
 		this.enqueue(token.functor, Object.create(token.functor.prototype), token.args);
 	} else if (token.type === "newMethod") {
-		token.functor[this.tokenLib.symbols.conSym] = true;
-		this.enqueue(function() { return token.object[token.prop].call(this) }, Object.create(token.functor.prototype));
+		debugLog(token);
+		token.object[token.property][this.tokenLib.symbols.conSym] = true;
+		this.enqueue(token.object[token.property], Object.create(token.object[token.property].prototype));
 	} else if (token.type === "newMethodArgs") {
-		token.functor[this.tokenLib.symbols.conSym] = true;
-		this.enqueue(function(...args) { return token.object[token.prop].apply(this, args) }, Object.create(token.functor.prototype));
+		token.object[token.property][this.tokenLib.symbols.conSym] = true;
+		this.enqueue(token.object[token.property], Object.create(token.object[token.property].prototype), token.args);
 	} else if (token.type === "spawn") this.spawn(token.functor);
 	else if (token.type === "spawnArgs") this.spawn(token.functor, null, token.args);
 	else if (token.type === "spawnMethod") this.spawn(token.object[token.property], token.object);

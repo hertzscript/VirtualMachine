@@ -58,12 +58,12 @@ function Plugin(babel) {
 		seqExp.expressions[0].argument.callee.property.name = "newArgs";
 		return seqExp;
 	}
-	function hzMethodNew(object, prop) {
-		const seqExp = hzCallMethod(callee);
+	function hzNewMethod(object, prop) {
+		const seqExp = hzCallMethod(object, prop);
 		seqExp.expressions[0].argument.callee.property.name = "newMethod";
 		return seqExp;
 	}
-	function hzMethodNewArgs(object, prop, argsArray) {
+	function hzNewMethodArgs(object, prop, argsArray) {
 		const seqExp = hzMethodNew(object, prop);
 		seqExp.expressions[0].argument.arguments.push(t.arrayExpression(argsArray));
 		seqExp.expressions[0].argument.callee.property.name = "newMethodArgs";
