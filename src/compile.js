@@ -10,10 +10,10 @@ module.exports = function hzCompile(source, mod = false, standalone = false, spa
 		plugins: [hzBabelPlugin],
 		comments: false
 	});
-	if (standalone && !mod) {
+	if (standalone) {
 		const header = fs.readFileSync("./header.js").toString();
 		output.code = header + "hzDisp.import(function(hzDisp, hzUserLib, hzTknLib){return hzDisp.createCoroutine(function*(){" + output.code + "});});hzDisp.runComplete();";
-	} else if (mod && !standalone) {
+	} else if (mod) {
 		output.code = "module.exports = function(hzDisp,hzUserLib,hzTknLib){return hzDisp.createCoroutine(function*(){" + output.code + "});};";
 	}
 	return output.code;
