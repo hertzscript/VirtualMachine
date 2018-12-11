@@ -34,7 +34,7 @@
 	"author": "Dani Glore",
 	"license": "MIT",
 	"bin": {
-		"hzc": "./src/compileCLI"
+		"hzc": "./src/compileCLI.js"
 	},
 	"dependencies": {
 		"acorn": "^6.0.4",
