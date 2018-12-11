@@ -34,9 +34,17 @@ function Program(functor, thisArg = null, args = []) {
 	this.args = args;
 	this.instance = null
 }
-function Dispatcher(tokenLib, quantum = 300000000) {
+function Dispatcher(tokenLib = null, quantum = 300000000) {
 	// Instruction Token Library
-	this.tokenLib = tokenLib;
+	if (tokenLib !== null) {
+		this.tokenLib = tokenLib;
+	} else {
+		const TokenLib = require("./TokenLib.js");
+		this.tokenLib = new TokenLib();
+	}
+	// Userland Instruction Token Library
+	this.userLib = {};
+	for (const name in this.tokenLib) this.userLib[name] = (...args) => this.tokenLib[name].set(args);
 	// Default time-slice length per cycle()
 	this.quantum = quantum;
 	// Set to "true" when the Dispatcher is running
@@ -170,6 +178,9 @@ Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
 	const block = new ControlBlock();
 	block.stack.push(this.createProgram(functor, thisArg, args))
 	this.blocks.push(block);
+};
+Dispatcher.prototype.import = function (hzModule) {
+	this.spawn(hzModule(this, this.userLib, this.tokenLib));
 };
 // Pop and terminate a Program from the end of the stack
 Dispatcher.prototype.killLast = function () {

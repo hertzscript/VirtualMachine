@@ -1,40 +1,20 @@
 const fs = require('fs');
 const babel = require('babel-core');
-const acorn = require("acorn");
-const acornWalk = require("acorn-walk");
-acornWalk.base.SpawnExpression = acornWalk.base.YieldExpression;
-const escodegen = require("escodegen");
-const hzAcornPlugin = require("./AcornPlugin.js");
 const hzBabelPlugin = require('./BabelPlugin.js');
-const hzAcorn = acorn.Parser.extend(hzAcornPlugin);
-module.exports = function hzCompile(source) {
-	const ast = hzAcorn.parse(source);
-	acornWalk.simple(ast, {
-		SpawnExpression: function (node) {
-			node.type = "CallExpression";
-			node.callee = {
-				"type": "MemberExpression",
-				"object": {
-					"type": "Identifier",
-					"name": "hzUserLib"
-				},
-				"property": {
-					"type": "Identifier",
-					"name": "spawn"
-				},
-				"computed": false
-			};
-			node.arguments = [node.argument];
-		}
-	});
-	//console.log(JSON.stringify(ast, null, "\t"));
-	// Acorn AST is not compatible with Babel AST, so we need to give source code to Babel
-	const compatSource = escodegen.generate(ast);
-	const output = babel.transform(compatSource, {
+const compileSpawn = require("./compileSpawn.js");
+module.exports = function hzCompile(source, mod = false, standalone = false, spawn = false) {
+	if (spawn) {
+		source = compileSpawn(source);
+	}
+	const output = babel.transform(source, {
 		plugins: [hzBabelPlugin],
 		comments: false
 	});
-	const header = fs.readFileSync("./header.js").toString();
-	output.code = header + output.code;
-	return output;
+	if (standalone && !mod) {
+		const header = fs.readFileSync("./header.js").toString();
+		output.code = header + "hzDisp.import(function(hzDisp, hzUserLib, hzTknLib){return hzDisp.createCoroutine(function*(){" + output.code + "});});hzDisp.runComplete();";
+	} else if (mod && !standalone) {
+		output.code = "module.exports = function(hzDisp,hzUserLib,hzTknLib){return hzDisp.createCoroutine(function*(){" + output.code + "});};";
+	}
+	return output.code;
 };
