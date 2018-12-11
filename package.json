@@ -33,6 +33,9 @@
 	"main": "dist/Dispatcher.js",
 	"author": "Dani Glore",
 	"license": "MIT",
+	"bin": {
+		"hzc": "./src/compileCLI"
+	},
 	"dependencies": {
 		"acorn": "^6.0.4",
 		"acorn-walk": "^6.1.1",
