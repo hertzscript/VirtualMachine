@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const fs = require('fs');
 const hzCompile = require('./compile.js');
 const cliParser = require("command-line-args");
