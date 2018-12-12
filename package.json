@@ -31,7 +31,10 @@
 		"url": "https://github.com/Floofies/HertzScript/issues"
 	},
 	"main": "dist/Dispatcher.js",
-	"author": "Dani Glore",
+	"author": "Dani Glore (https://github.com/Floofies)",
+	"contributors": [
+		"Thomas G. (https://github.com/trgwii)"
+	],
 	"license": "MIT",
 	"bin": {
 		"hzc": "./src/compileCLI.js",
