@@ -108,14 +108,30 @@ Dispatcher.prototype.createCoroutine = function (functor) {
 	return coroutine;
 };
 Dispatcher.prototype.createArrowCoroutine = function (functor, thisArg) {
-	const coroutine = this.createCoroutine(functor);
-	coroutine[this.tokenLib.symbols.tokenSym] = coroutine[this.tokenLib.symbols.tokenSym].bind(thisArg);
-	return coroutine;
+	const name = functor.name;
+	const length = functor.length;
+	const toString = functor.toString.bind(functor);
+	functor = functor.bind(thisArg);
+	Object.defineProperties(functor, {
+		length: {
+			configurable: true,
+			value: length
+		},
+		name: {
+			configurable: true,
+			value: name
+		},
+		toString: {
+			configurable: true,
+			value: toString
+		}
+	});
+	return this.createCoroutine(functor);
 };
 Dispatcher.prototype.printProgram = function (program) {
 	debugLog(`Program Details:
 	Type: ${program.type},
-	Image: ${this.tokenLib.symbols.tokenSym in program.image ? program.image[this.tokenLib.symbols.tokenSym] : program.image},
+	Image: ${this.tokenLib.symbols.tokenSym in program.image ? program.image[this.tokenLib.symbols.tokenSym].toString() : program.image.toString()},
 	Args: ${program.args.length > 0 ? program.args.join() : "none"}
 	`);
 };
