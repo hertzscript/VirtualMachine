@@ -1,4 +1,8 @@
 const performance = require('perf_hooks').performance;
+const HzFunctor = require("./HzFunctor.js");
+const TokenLib = require("./TokenLib.js");
+const DetourLib = require("./DetourLib.js");
+const UserLib = require("./UserLib.js");
 const debug = false;
 if (debug) require("console-buffer")(4096);
 function debugLog(str) {
@@ -10,9 +14,9 @@ function debugTable(obj) {
 function debugError(error) {
 	if (debug) console.error(error);
 }
-// A type of low level Thread Control Block
+// A type of low level Stack Control Block
 function ControlBlock() {
-	// A virtual stack of Programs and Functions
+	// A virtual stack of hzFunctors and Functions
 	this.stack = [];
 	// The last new return value seen by the Dispatcher
 	this.lastReturn = null;
@@ -25,26 +29,17 @@ function ControlBlock() {
 		makespan: 0
 	};
 }
-// Process Control Block
-// Wraps a Function or GeneratorFunction, and stores metadata about it
-function Program(functor, thisArg = null, args = []) {
-	this.type = "unknown";
-	this.image = functor;
-	this.thisArg = thisArg;
-	this.args = args;
-	this.instance = null
-}
 function Dispatcher(tokenLib = null, quantum = 300000000) {
 	// Instruction Token Library
 	if (tokenLib !== null) {
 		this.tokenLib = tokenLib;
 	} else {
-		const TokenLib = require("./TokenLib.js");
 		this.tokenLib = new TokenLib();
 	}
-	// Userland Instruction Token Library
-	this.userLib = {};
-	for (const name in this.tokenLib) this.userLib[name] = (...args) => this.tokenLib[name].set(args);
+	// Functor detour library
+	this.detourLib = new DetourLib(this.tokenLib, debugLog);
+	// Userland Library
+	this.userLib = new UserLib(this.tokenLib, this.detourLib);
 	// Default time-slice length per cycle()
 	this.quantum = quantum;
 	// Set to "true" when the Dispatcher is running
@@ -64,119 +59,7 @@ function Dispatcher(tokenLib = null, quantum = 300000000) {
 Dispatcher.prototype.isKernelized = function (input) {
 	return ((typeof input) === "object") && (this.tokenLib.symbols.kernSym in input);
 };
-// Dynamic call site interception
-Dispatcher.prototype.createCallAdapter = function (functor) {
-	debugLog("Creating call adapter for:");
-	debugLog(functor);
-	const tokenLib = this.tokenLib;
-	const hzFunctor = function (...argsArray) {
-		const d = new Dispatcher(tokenLib);
-		debugLog("\nhzFunctor has been invoked, initializing new Dispatcher:");
-		debugLog(hzFunctor);
-		d.enqueue(hzFunctor[tokenLib.symbols.tokenSym], this, argsArray);
-		return d.runComplete();
-	};
-	hzFunctor[tokenLib.symbols.tokenSym] = functor;
-	return hzFunctor;
-}
-Dispatcher.prototype.createSubroutine = function (functor) {
-	const subroutine = this.createCallAdapter(functor);
-	functor[this.tokenLib.symbols.subSym] = true;
-	subroutine[this.tokenLib.symbols.subSym] = true;
-	return subroutine;
-};
-Dispatcher.prototype.createGenerator = function (functor) {
-	const generator = this.createCallAdapter(functor);
-	functor[this.tokenLib.symbols.genSym] = true;
-	generator[this.tokenLib.symbols.genSym] = true;
-	return generator;
-};
-Dispatcher.prototype.createIterator = function (iterator) {
-	iterator.next = this.createCallAdapter(iterator.next);
-	iterator.throw = this.createCallAdapter(iterator.throw);
-	iterator.return = this.createCallAdapter(iterator.return);
-	iterator.next[this.tokenLib.symbols.iterSym] = true;
-	iterator.throw[this.tokenLib.symbols.iterSym] = true;
-	iterator.return[this.tokenLib.symbols.iterSym] = true;
-	iterator[this.tokenLib.symbols.iterSym] = true;
-	return this.tokenLib.yieldValue.set([iterator]);
-};
-Dispatcher.prototype.createCoroutine = function (functor) {
-	const coroutine = this.createCallAdapter(functor);
-	functor[this.tokenLib.symbols.crtSym] = true;
-	coroutine[this.tokenLib.symbols.crtSym] = true;
-	return coroutine;
-};
-Dispatcher.prototype.createArrowCoroutine = function (functor, thisArg) {
-	const name = functor.name;
-	const length = functor.length;
-	const toString = functor.toString.bind(functor);
-	functor = functor.bind(thisArg);
-	Object.defineProperties(functor, {
-		length: {
-			configurable: true,
-			value: length
-		},
-		name: {
-			configurable: true,
-			value: name
-		},
-		toString: {
-			configurable: true,
-			value: toString
-		}
-	});
-	return this.createCoroutine(functor);
-};
-Dispatcher.prototype.printProgram = function (program) {
-	debugLog(`Program Details:
-	Type: ${program.type},
-	Image: ${this.tokenLib.symbols.tokenSym in program.image ? program.image[this.tokenLib.symbols.tokenSym].toString() : program.image.toString()},
-	Args: ${program.args.length > 0 ? program.args.join() : "none"}
-	`);
-};
-Dispatcher.prototype.createProgram = function (functor, thisArg = null, args = []) {
-	if (args === null) args = [];
-	const program = new Program(functor, thisArg, args);
-	if (this.tokenLib.symbols.conSym in functor) program.type = "constructor";
-	else if (this.tokenLib.symbols.subSym in functor) program.type = "subroutine";
-	else if (this.tokenLib.symbols.genSym in functor) program.type = "generator";
-	else if (this.tokenLib.symbols.iterSym in functor) program.type = "iterator";
-	else if (this.tokenLib.symbols.crtSym in functor) program.type = "coroutine";
-	else program.type = "unknown";
-	return program;
-}
-// Program interaction
-Dispatcher.prototype.initProgram = function (program, thisArg = null, args = []) {
-	debugLog("Program Initializing:");
-	debugLog(program.image);
-	debugLog("Arguments given:");
-	debugLog(program.args);
-	if (thisArg === null && program.thisArg !== null) thisArg = program.thisArg;
-	if (args.length === 0 && program.args.length !== 0) args = program.args;
-	if (program.type !== "unknown" && this.tokenLib.symbols.tokenSym in program.image) {
-		return program.image[this.tokenLib.symbols.tokenSym].apply(thisArg, args);
-	}
-	return program.image.apply(thisArg, args);
-};
-Dispatcher.prototype.callProgram = function (program, nextValue, thisArg = null) {
-	if (program.type === "unknown") return this.initProgram(program);
-	if (program.type === "generator") return this.createIterator(this.initProgram(program));
-	if (program.type === "iterator") {
-		if (this.activeBlock.lastReturn !== null) return this.initProgram(program, thisArg, [this.activeBlock.lastReturn]);
-		return this.initProgram(program);
-	}
-	if (program.instance === null) program.instance = this.initProgram(program);
-	return program.instance.next(nextValue);
-};
-Dispatcher.prototype.throwIntoProgram = function (program, error) {
-	if (program.instance !== null) return program.instance.throw(error);
-	else throw error;
-};
-Dispatcher.prototype.returnFromProgram = function (program) {
-	if (program.instance !== null) program.instance.return();
-};
-// Add a Program to the active ControlBlock, or create a new ControlBlock for it
+// Add a hzFunctor to the active ControlBlock, or create a new ControlBlock for it
 Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null) {
 	debugLog("Enqueuing Functor:");
 	debugLog(functor);
@@ -184,32 +67,38 @@ Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null) {
 	if (this.blocks.length === 0) {
 		this.spawn(functor, thisArg, args);
 	} else {
-		this.activeBlock.stack.push(this.createProgram(functor, thisArg, args));
+		this.activeBlock.stack.push(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
 	}
 };
+// Add a hzFunctor to a new ControlBlock
 Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
 	debugLog("Spawning Functor in new ControlBlock:");
 	debugLog(functor);
 	debugLog(Object.keys(functor).join());
 	const block = new ControlBlock();
-	block.stack.push(this.createProgram(functor, thisArg, args))
+	block.stack.push(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
 	this.blocks.push(block);
 };
 Dispatcher.prototype.import = function (hzModule) {
-	this.spawn(hzModule(this, this.userLib, this.tokenLib));
+	this.spawn(hzModule(this.userLib));
 };
-// Pop and terminate a Program from the end of the stack
+Dispatcher.prototype.exec = function (functor, thisArg = null, args = null) {
+	if (this.tokenLib.symbols.tokenSym in functor) this.spawn(functor, thisArgs, args);
+	else this.import(functor);
+	return this.runComplete();
+};
+// Pop and terminate a Functor from the end of the stack
 Dispatcher.prototype.killLast = function () {
-	debugLog("Killing last program in the ControlBlock");
-	if (this.activeBlock.stack.length > 0) this.returnFromProgram(this.activeBlock.stack.pop());
+	debugLog("Killing last Functor in the ControlBlock");
+	if (this.activeBlock.stack.length > 0) this.activeBlock.stack.pop().returnFromFunctor();
 	if (this.activeBlock.stack.length === 0) {
 		this.blocks.splice(this.blockIndex, 1);
 		this.blockIndex--;
 	}
 };
-// Pop and terminate all Programs in the stack
+// Pop and terminate all Functors in the stack
 Dispatcher.prototype.killAll = function () {
-	debugLog("Killing all programs in the ControlBlock");
+	debugLog("Killing all Functors in the ControlBlock");
 	while (this.activeBlock.stack.length > 0) this.killLast(this.activeBlock);
 	this.blocks.splice(this.blockIndex, 1);
 	this.blockIndex--;
@@ -266,7 +155,7 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 			if (!this.running || this.blocks.length === 0) {
 				!this.running ? debugLog("Stopping Dispatcher because the Stop signal was received...\n")
 					: debugLog("Stopping Dispatcher because all ControlBlock Stacks are empty...\n");
-				// Dispatcher is not running, or stack is empty, so abort
+				// Dispatcher is not running, or ControlBlock stack is empty, so abort
 				this.stop();
 				return;
 			}
@@ -285,31 +174,31 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 			}
 			if (block.stack.length > 0) (debugLog("Stack Snapshot:"), debugTable(block.stack));
 			else debugLog("ControlBlock Stack is Empty");
-			// Advance execution of the last Program in the virtual stack
+			// Advance execution of the last Functor in the virtual stack
 			try {
-				const program = block.stack[block.stack.length - 1];
-				debugLog("Dispatching Program:");
-				this.printProgram(program);
-				if (block.lastReturn !== null) (debugLog("With value:"), debugLog(this.lastReturn));
-				// Advances execution of the Program and saves the yielded state
+				const hzFunctor = block.stack[block.stack.length - 1];
+				debugLog("Dispatching hzFunctor:");
+				hzFunctor.log();
+				if (block.lastReturn !== null) (debugLog("With value:"), debugLog(block.lastReturn));
+				// Advances execution of the hzFunctor and saves the yielded state
 				if (block.lastError !== null) {
-					debugLog("Throwing Error into program...");
-					// Uncaught error was seen before, so throw it into the Program
-					var state = this.throwIntoProgram(program, block.lastError);
+					debugLog("Throwing Error into hzFunctor...");
+					// Uncaught error was seen before, so throw it into the hzFunctor
+					var state = hzFunctor.throwIntoFunctor(block.lastError);
 					block.lastError = null;
 				} else {
-					// A value was returned or yielded before, so invoke the Program with it
-					var state = block.lastReturn !== null ? this.callProgram(program, block.lastReturn) : this.callProgram(program);
+					// A value was returned or yielded before, so invoke the hzFunctor with it
+					var state = block.lastReturn !== null ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
 					block.lastReturn = null;
 				}
-				// Return the yielded state of the Program
-				debugLog("Program yielded State:");
+				// Return the yielded state of the hzFunctor
+				debugLog("hzFunctor yielded State:");
 				debugLog(state);
-				if (program.type === "iterator") program.args = [];
-				if (program.type === "unknown") {
+				if (hzFunctor.type === "iterator") hzFunctor.args = [];
+				if (hzFunctor.type === "unknown") {
 					if ((typeof state) === "undefined") state = this.tokenLib.return;
 					else state = this.tokenLib.returnValue.set([state]);
-				} else if (program.type !== "generator") {
+				} else if (hzFunctor.type !== "generator") {
 					if (!this.isKernelized(state.value)) {
 						if ((typeof state.value) === "undefined") state = this.tokenLib.return;
 						else state = this.tokenLib.returnValue.set([state.value]);
@@ -317,15 +206,15 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 						state = state.value;
 					}
 				}
-				if (program.type === "constructor" && state === this.tokenLib.return) {
-					state = this.tokenLib.returnValue.set([program.thisArg]);
+				if (hzFunctor.type === "constructor" && state === this.tokenLib.return) {
+					state = this.tokenLib.returnValue.set([hzFunctor.thisArg]);
 				}
 				// Collect resultant state and process any instructions
 				this.processState(state);
 			} catch (error) {
 				debugLog("Uncaught Error was thrown! Terminating end of stack...");
 				debugError(error);
-				// Uncaught error, so end the program
+				// Uncaught error, so end the hzFunctor
 				this.killLast(block);
 				block.lastError = error;
 				if (this.blocks.length === 0) {

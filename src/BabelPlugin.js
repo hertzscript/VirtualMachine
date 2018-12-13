@@ -148,8 +148,8 @@ function Plugin(babel) {
 	function hzCoroutine(funcExp) {
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("hzDisp"),
-				t.identifier("createCoroutine")
+				t.identifier("hzUserLib"),
+				t.identifier("hookCoroutine")
 			),
 			[funcExp]
 		);
@@ -164,8 +164,8 @@ function Plugin(babel) {
 		}
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("hzDisp"),
-				t.identifier("createArrowCoroutine")
+				t.identifier("hzUserLib"),
+				t.identifier("hookArrowCoroutine")
 			),
 			[
 				funcExp,
@@ -177,8 +177,8 @@ function Plugin(babel) {
 	function hzGenerator(funcExp) {
 		return t.callExpression(
 			t.memberExpression(
-				t.identifier("hzDisp"),
-				t.identifier("createGenerator")
+				t.identifier("hzUserLib"),
+				t.identifier("hookGenerator")
 			),
 			[funcExp]
 		);

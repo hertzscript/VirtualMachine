@@ -13,9 +13,9 @@ module.exports = function hzCompile(source, mod = false, standalone = false, spa
 	});
 	if (standalone) {
 		const header = fs.readFileSync(join(__dirname, "header.js"), 'utf8');
-		output.code = header + "hzDisp.import(function(hzDisp, hzUserLib, hzTknLib){return hzDisp.createCoroutine(function*(){" + output.code + "});});hzDisp.runComplete();";
+		output.code = header + "hzDisp.exec(function(hzUserLib){return hzUserLib.hookCoroutine(function*(){" + output.code + "});});";
 	} else if (mod) {
-		output.code = "module.exports = function(hzDisp,hzUserLib,hzTknLib){return hzDisp.createCoroutine(function*(){" + output.code + "});};";
+		output.code = "module.exports = function(hzUserLib){return hzUserLib.hookCoroutine(function*(){" + output.code + "});};";
 	}
 	return output.code;
 };
