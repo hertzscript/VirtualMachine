@@ -8,5 +8,5 @@ function sleepAndSay(message, ms) {
 	sleep(ms);
 	console.log(message);
 }
-spawn sleepAndSay("Hello World 1000ms", 5000);
+spawn sleepAndSay("Hello World 5000ms", 5000);
 spawn sleepAndSay("Hello World 500ms", 500);
