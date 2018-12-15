@@ -64,7 +64,7 @@ function Plugin(babel) {
 		return seqExp;
 	}
 	function hzNewMethodArgs(object, prop, argsArray) {
-		const seqExp = hzMethodNew(object, prop);
+		const seqExp = hzNewMethod(object, prop);
 		seqExp.expressions[0].argument.arguments.push(t.arrayExpression(argsArray));
 		seqExp.expressions[0].argument.callee.property.name = "newMethodArgs";
 		return seqExp;
