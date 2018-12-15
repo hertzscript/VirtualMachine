@@ -211,7 +211,36 @@ function Plugin(babel) {
 			)
 		]);
 	}
+	function loopInterruptor(path) {
+		if (path.node.body.type !== "BlockStatement") {
+			path.node.body = t.blockStatement(path.node.body);
+		}
+		path.node.body.body.unshift(t.expressionStatement(
+			t.yieldExpression(t.callExpression(
+				t.memberExpression(
+					t.identifier("hzUserLib"),
+					t.identifier("loopYield")
+				),
+				[]
+			))
+		));
+	}
 	const visitor = {
+		"WhileStatement": {
+			exit: loopInterruptor
+		},
+		"DoWhileStatement": {
+			exit: loopInterruptor
+		},
+		"ForStatement": {
+			exit: loopInterruptor
+		},
+		"ForOfStatement": {
+			exit: loopInterruptor
+		},
+		"ForInStatement": {
+			exit: loopInterruptor
+		},
 		"FunctionExpression": {
 			exit: function (path) {
 				if (path.node.generator) path.replaceWith(hzGenerator(path.node));

@@ -71,6 +71,8 @@ function TokenLib() {
 			"property",
 			"args"
 		),
+		// Indicates an HZ-inserted loop yield
+		loopYield: new HzToken("loopYield"),
 		symbols: {
 			kernSym: kernSym,
 			tokenSym: Symbol("Instruction Token Stream Symbol"),

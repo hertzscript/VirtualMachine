@@ -108,6 +108,7 @@ Dispatcher.prototype.processState = function (token) {
 	debugLog("Processing Token \"" + token.type + "\"");
 	debugLog(token);
 	// Interprets an instruction token into stack operations
+	if (token.type === "loopYield") return;
 	if (token.type === "returnValue") {
 		this.killLast(this.activeBlock);
 		this.activeBlock.lastReturn = token.arg;
