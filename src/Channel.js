@@ -5,14 +5,6 @@ function Channel(typeString, limit = Number.MAX_SAFE_INTEGER) {
 	this.queue = [];
 	this.queueLimit = limit;
 }
-Channel.prototype.prune = function () {
-	const locs = [];
-	for (const reader of this.readers) {
-		locs.push(reader.loc);
-	}
-	const lowestLoc = Math.min(...locs);
-	this.queue.slice(0, lowestLoc);
-};
 Channel.prototype.write = function (message) {
 	const type = typeof message;
 	if (type !== this.typeString) throw new TypeError("Channel expected type of \"" + this.typeString + "\", but received type \"" + type + "\"");
