@@ -213,7 +213,11 @@ function Plugin(babel) {
 	}
 	function loopInterruptor(path) {
 		if (path.node.body.type !== "BlockStatement") {
-			path.node.body = t.blockStatement(path.node.body);
+			if (path.node.body.type === "EmptyStatement") {
+				path.node.body = t.blockStatement([]);
+			} else {
+				path.node.body = t.blockStatement(path.node.body);
+			}
 		}
 		path.node.body.body.unshift(t.expressionStatement(
 			t.yieldExpression(t.callExpression(
