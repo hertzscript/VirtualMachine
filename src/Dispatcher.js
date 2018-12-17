@@ -200,15 +200,18 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 					if ((typeof state) === "undefined") state = this.tokenLib.return;
 					else state = this.tokenLib.returnValue.set([state]);
 				} else if (hzFunctor.type !== "generator") {
-					if (!this.isKernelized(state.value)) {
+					if (!(this.tokenLib.symbols.tokenSym in hzFunctor.image)) state = this.tokenLib.returnValue.set([state]);
+					else if (!this.isKernelized(state.value)) {
 						if ((typeof state.value) === "undefined") state = this.tokenLib.return;
 						else state = this.tokenLib.returnValue.set([state.value]);
 					} else {
 						state = state.value;
 					}
 				}
-				if (hzFunctor.type === "constructor" && state === this.tokenLib.return) {
-					state = this.tokenLib.returnValue.set([hzFunctor.thisArg]);
+				if (hzFunctor.type === "constructor") {
+					if (state === this.tokenLib.return || (state === this.tokenLib.returnValue && (typeof state.arg) === "undefined")) {
+						state = this.tokenLib.returnValue.set([hzFunctor.thisArg]);
+					}
 				}
 				// Collect resultant state and process any instructions
 				this.processState(state);
@@ -218,7 +221,7 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 				// Uncaught error, so end the hzFunctor
 				this.killLast(block);
 				block.lastError = error;
-				if (this.blocks.length === 0) {
+				if (block.stack.length === 0) {
 					debugLog("Stopping Dispatcher due to an uncaught error...\n");
 					this.stop();
 					throw error;
@@ -250,7 +253,7 @@ Dispatcher.prototype.runAsync = function (interval = 300, quantum = null) {
 	});
 };
 Dispatcher.prototype.runIterator = function* (quantum = null) {
-	while (this.runSync()) yield;
+	while (this.runSync(quantum)) yield;
 };
 Dispatcher.prototype.stop = function () {
 	this.blockIndex = 0;
