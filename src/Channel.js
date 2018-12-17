@@ -15,8 +15,8 @@ Channel.prototype.read = function (reader) {
 	if (!this.readers.has(reader)) throw new Error("Channel got read by unregistered Reader");
 	if (reader.loc >= this.queue.length || reader.loc < 0) return;
 	const data = this.queue[reader.loc];
-	const minLoc = Math.min(Array.from(this.readers).map(reader => reader.loc));
-	if (this.minReaderLoc <= minLoc) {
+	const minLoc = Math.min(...Array.from(this.readers).map(reader => reader.loc));
+	if (this.minReaderLoc < minLoc) {
 		this.minReaderLoc = minLoc;
 		const deleted = this.queue.splice(0, minLoc + 1);
 		for (const reader of this.readers) reader.loc = reader.loc - (deleted.length - 1);
@@ -27,6 +27,7 @@ Channel.prototype.read = function (reader) {
 };
 Channel.prototype.addReader = function (reader) {
 	this.readers.add(reader);
+	reader.loc = this.queue.length === 0 ? 0 : this.queue.length - 1;
 };
 Channel.prototype.removeReader = function (reader) {
 	this.readers.delete(reader);
