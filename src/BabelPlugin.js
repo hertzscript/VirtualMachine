@@ -216,7 +216,11 @@ function Plugin(babel) {
 			if (path.node.body.type === "EmptyStatement") {
 				path.node.body = t.blockStatement([]);
 			} else {
-				path.node.body = t.blockStatement(path.node.body);
+				if (Array.isArray(path.node.body)) {
+					path.node.body = t.blockStatement(path.node.body);
+				} else {
+					path.node.body = t.blockStatement([path.node.body]);
+				}
 			}
 		}
 		path.node.body.body.unshift(t.expressionStatement(
