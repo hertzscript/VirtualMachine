@@ -28,9 +28,9 @@ Normally, coroutines are reserved for cooperative multitasking, but HertzScript 
 
 The source code HzScript produces can be output in one of two forms:
 
-	1. A self-running platform-agnostic JavaScript module which transparently integrates with existing software.
+1. A self-running platform-agnostic JavaScript module which transparently integrates with existing software.
 
-	2. A specialized HzModule which can be directly imported into a coroutine dispatcher.
+2. A specialized HzModule which can be directly imported into a coroutine dispatcher.
 	
 Babel is used to transform all source code so that it is able to run concurrently, and Acorn is used to parse a special `spawn` keyword which acts as the primary interface to utilize this concurrency.
 
