@@ -19,6 +19,7 @@ HzFunctor.prototype.log = function () {
 	Type: ${this.type},
 	Image: ${this.tokenLib.symbols.tokenSym in this.image ? this.image[this.tokenLib.symbols.tokenSym].toString() : this.image.toString()},
 	Args: ${this.args.length > 0 ? this.args.join() : "none"}
+	ThisArg: ${this.thisArg}
 	`);
 };
 // Functor interaction
@@ -33,13 +34,11 @@ HzFunctor.prototype.initFunctor = function (thisArg = null, args = []) {
 	return this.image.apply(thisArg, args);
 };
 HzFunctor.prototype.callFunctor = function (nextValue, thisArg = null) {
-	if (this.type === "unknown") return this.initFunctor();
-	if (this.type === "generator") return this.createIterator(this.initFunctor());
-	if (this.type === "iterator") {
-		if (this.activeBlock.lastReturn !== null) return this.initFunctor(thisArg, [this.activeBlock.lastReturn]);
-		return this.initFunctor();
-	}
-	if (this.instance === null) this.instance = this.initFunctor();
+	if (this.type === "unknown") return this.initFunctor(thisArg);
+	if (this.type === "generator") return this.initFunctor(thisArg);
+	if (this.type === "iterator") return this.initFunctor(thisArg, [nextValue]);
+	if (!(this.tokenLib.symbols.tokenSym in this.image)) return this.initFunctor(thisArg);
+	if (this.instance === null) this.instance = this.initFunctor(thisArg);
 	return this.instance.next(nextValue);
 };
 HzFunctor.prototype.throwIntoFunctor = function (error) {

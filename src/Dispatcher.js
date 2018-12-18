@@ -196,7 +196,9 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 				debugLog("hzFunctor yielded State:");
 				debugLog(state);
 				if (hzFunctor.type === "iterator") hzFunctor.args = [];
-				if (hzFunctor.type === "unknown") {
+				if (hzFunctor.type === "generator") {
+					state = this.detourLib.hookIterator(state);
+				} else if (hzFunctor.type === "unknown") {
 					if ((typeof state) === "undefined") state = this.tokenLib.return;
 					else state = this.tokenLib.returnValue.set([state]);
 				} else if (hzFunctor.type !== "generator") {
