@@ -1,5 +1,14 @@
 # HertzScript
 
+- [FAQ](#faq)
+- [High-Level Synopsis](#high-level-synopsis)
+- [Theory of Operation](#theory-of-operation)
+	- [Compiler Pipeline](#compiler-pipeline)
+	- [Function Detours](#function-detours)
+	- [Coroutine Dispatcher](#coroutine-dispatcher)
+	- [Instruction Tokens](#instruction-tokens)
+- [Concurrent Programming with `Spawn`](#concurrent-programming-with-spawn)
+
 :seedling: This project is in early alpha.
 
 HertzScript (abbreviated "HzScript") takes your regular existing JavaScript source code as input, and transforms it into an interruptable coroutine system with voluntary preemption. A new keyword is introduced named `spawn` which allows you to run several functions concurrently.
