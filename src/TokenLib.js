@@ -45,16 +45,6 @@ function TokenLib() {
 			"property",
 			"args"
 		),
-		// Type 2: Data Tokens,
-		//	Wrap arbitrary userland datum when returning or yielding.
-		return: new HzToken("return"),
-		returnValue: new HzToken("returnValue",
-			"arg"
-		),
-		yield: new HzToken("yield"),
-		yieldValue: new HzToken("yieldValue",
-			"arg"
-		),
 		spawn: new HzToken("spawn",
 			"functor"
 		),
@@ -70,6 +60,16 @@ function TokenLib() {
 			"object",
 			"property",
 			"args"
+		),
+		// Type 2: Data Tokens,
+		//	Wrap arbitrary userland datum when returning or yielding.
+		return: new HzToken("return"),
+		returnValue: new HzToken("returnValue",
+			"arg"
+		),
+		yield: new HzToken("yield"),
+		yieldValue: new HzToken("yieldValue",
+			"arg"
 		),
 		// Indicates an HZ-inserted loop yield
 		loopYield: new HzToken("loopYield"),
