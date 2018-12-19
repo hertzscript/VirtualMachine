@@ -86,10 +86,10 @@ Instruction tokens are classified by two types:
 - `spawn` & `spawnArgs` spawn a new coroutine.
 - `spawnMethod` & `spawnMethodArgs` spawn a new corotuine from a method.
 
-2. **Data Tokens** wrap arbitrary userland datum, such as for `return`, `yield`.
+2. **Data Tokens** wrap arbitrary userland datum, such as for `return` and `yield`.
 
-- `return` & `returnValue`
-- `yield` & `yieldValue`
+- `return` & `returnValue` wraps a `return`.
+- `yield` & `yieldValue` wraps a `yield`.
 
 ## Concurrent Programming with `spawn`
 
