@@ -1,8 +1,8 @@
 const performance = require('perf_hooks').performance;
 const HzFunctor = require("./HzFunctor.js");
-const TokenLib = require("./TokenLib.js");
-const DetourLib = require("./DetourLib.js");
-const UserLib = require("./UserLib.js");
+const TokenLib = require("./lib/TokenLib.js");
+const DetourLib = require("./lib/DetourLib.js");
+const UserLib = require("./lib/UserLib.js");
 const debug = false;
 if (debug) require("console-buffer")(4096);
 function debugLog(str) {
@@ -25,7 +25,9 @@ function ControlBlock() {
 	// Pauses a stack's execution
 	this.waiting = false;
 	this.metrics = {
+		// Last Cycle time
 		makeflight: 0,
+		// Total running time
 		makespan: 0
 	};
 }
@@ -37,7 +39,7 @@ function Dispatcher(tokenLib = null, quantum = 300000000) {
 		this.tokenLib = new TokenLib();
 	}
 	// Functor detour library
-	this.detourLib = new DetourLib(this.tokenLib, debugLog);
+	this.detourLib = new DetourLib(Dispatcher, this.tokenLib, debugLog);
 	// Userland Library
 	this.userLib = new UserLib(this.tokenLib, this.detourLib);
 	// Default time-slice length per cycle()

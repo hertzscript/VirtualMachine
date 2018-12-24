@@ -1,7 +1,8 @@
-function DetourLib(tokenLib, debugLog) {
+function DetourLib(Dispatcher, tokenLib, debugLog) {
 	this.tokenLib = tokenLib;
 	// TODO: Remove the logging somehow
 	this.debugLog = debugLog;
+	this.Dispatcher = Dispatcher;
 }
 // Dynamic call site interception
 DetourLib.prototype.createDetour = function (functor) {
@@ -9,11 +10,11 @@ DetourLib.prototype.createDetour = function (functor) {
 	this.debugLog(functor);
 	const tokenLib = this.tokenLib;
 	const hzFunctor = function (...argsArray) {
-		const d = new Dispatcher(tokenLib);
+		const hzDisp = new this.Dispatcher(tokenLib);
 		this.debugLog("\nhzFunctor has been invoked, initializing new Dispatcher:");
 		this.debugLog(hzFunctor);
-		d.enqueue(hzFunctor[d.tokenLib.symbols.tokenSym], this, argsArray);
-		return d.runComplete();
+		hzDisp.enqueue(hzFunctor[d.tokenLib.symbols.tokenSym], this, argsArray);
+		return hzDisp.runComplete();
 	};
 	hzFunctor[this.tokenLib.symbols.tokenSym] = functor;
 	return hzFunctor;
