@@ -74,6 +74,7 @@ Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null) {
 };
 // Add a hzFunctor to a new ControlBlock
 Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
+	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
 	debugLog("Spawning Functor in new ControlBlock:");
 	debugLog(functor);
 	debugLog(Object.keys(functor).join());
@@ -89,11 +90,12 @@ Dispatcher.prototype.exec = function (functor, thisArg = null, args = null) {
 	else this.import(functor);
 	return this.runComplete();
 };
-// Pop and terminate a Functor from the end of the stack
+// Pop and terminate a Functor from the stack
 Dispatcher.prototype.killLast = function () {
 	debugLog("Killing last Functor in the ControlBlock");
 	if (this.activeBlock.stack.length > 0) this.activeBlock.stack.pop().returnFromFunctor();
 	if (this.activeBlock.stack.length === 0) {
+		debugLog("Pruning empty ControlBlock");
 		this.blocks.splice(this.blockIndex, 1);
 		this.blockIndex--;
 	}
@@ -248,12 +250,15 @@ Dispatcher.prototype.runSync = function (quantum = null) {
 	return this.lastReturn;
 };
 Dispatcher.prototype.runAsync = function (interval = 300, quantum = null) {
-	return new Promise(function (resolve) {
-		const asyncRunner = function () {
+	if (this.running) return;
+	debugLog("Beginning asynchronous execution...");
+	return new Promise((resolve) => {
+		const asyncRunner = () => {
 			this.runSync(quantum);
 			if (!this.running) return resolve(this.lastReturn);
 			setTimeout(asyncRunner, interval);
 		};
+		setTimeout(asyncRunner, interval);
 	});
 };
 Dispatcher.prototype.runIterator = function* (quantum = null) {
