@@ -1,6 +1,6 @@
 {
 	"name": "hertzscript-dispatcher",
-	"version": "1.0.0",
+	"version": "0.0.1",
 	"description": "A system that executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
 	"keywords": [
 		"javascript",
@@ -31,6 +31,19 @@
 		"url": "https://github.com/Floofies/HertzScript/issues"
 	},
 	"main": "src/Dispatcher.js",
+	"bin": {
+		"hzs": "node ./bin/executeCLI.js",
+		"hzscript": "node ./bin/executeCLI.js",
+		"hzr": "node ./bin/REPL.js",
+		"hzrepl": "node ./bin/REPL.js"
+	},
 	"author": "Dani Glore (https://github.com/Floofies)",
-	"license": "MIT"
+	"license": "MIT",
+	"dependencies": {
+		"hertzscript-compiler": "^0.0.1",
+		"console-buffer": "^1.0.1",
+		"command-line-args": "^5.0.2",
+		"terminal-kit": "^1.26.8",
+		"@aoberoi/capture-console": "^1.0.0"
+	}
 }
