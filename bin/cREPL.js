@@ -2,7 +2,7 @@
 const Dispatcher = require("../src/Dispatcher.js");
 const hzCompile = require("hertzscript-compiler");
 const term = require("terminal-kit");
-const CaptureConsole = require("@aoberoi/capture-console").CaptureConsole;
+const CaptureConsole = require("../src/lib/CaptureConsole.js");
 const ansiRegexp = /[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))/;
 const pipes = {
 	vertLine: "│",
