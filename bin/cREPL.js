@@ -3,7 +3,20 @@ const Dispatcher = require("../src/Dispatcher.js");
 const hzCompile = require("hertzscript-compiler");
 const term = require("terminal-kit");
 const CaptureConsole = require("../src/lib/CaptureConsole.js");
+const fs = require("fs");
+const os = require("os");
 const ansiRegexp = /[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))/;
+if ("HZREPL_HISTORY_SIZE" in process.env) var historyLimit = Number(process.env.HZREPL_HISTORY_SIZE);
+else var historyLimit = 1000;
+if ("HZREPL_HISTORY" in process.env) var historyPath = process.env.HZREPL_HISTORY;
+else var historyPath = os.homedir() + "/.hertzscript_repl_history";
+const writeHistory = historyPath !== "";
+if (writeHistory && !fs.existsSync(historyPath)) fs.closeSync(fs.openSync(historyPath, 'w'));
+if (writeHistory) var historyJSON = fs.readFileSync(historyPath);
+if (writeHistory && historyJSON.length > 0) var prevInputHistory = JSON.parse(historyJSON);
+else var prevInputHistory = null;
+if (prevInputHistory !== null) var inputHistory = prevInputHistory;
+else var inputHistory = [];
 const pipes = {
 	vertLine: "│",
 	horizLine: "─",
@@ -17,14 +30,16 @@ const pipes = {
 	leftT: "├",
 	rightT: "┤"
 };
-function drawBox(height, width) {
+function drawBox(height, width, x = 0, y = 0) {
+	term.terminal.moveTo(x, y);
+	const leftSpaces = new Array(y).fill(" ").join("");
 	const horizLine = new Array(width - 2).fill(pipes.horizLine).join("");
 	const top = pipes.topLeft + horizLine + pipes.topRight;
 	const bot = pipes.botLeft + horizLine + pipes.botRight;
-	const spaces = new Array(top.length - 2).fill(" ").join("");
-	const middleRow = pipes.vertLine + spaces + pipes.vertLine + "\n";
+	const middleSpaces = new Array(top.length - 2).fill(" ").join("");
+	const middleRow = leftSpaces + pipes.vertLine + middleSpaces + pipes.vertLine + "\n";
 	const middle = new Array(height - 1).fill(middleRow).join("");
-	return "\n" + top + "\n" + middle + bot + "\n";
+	return "\n" + leftSpaces + top + "\n" + middle + leftSpaces + bot + "\n";
 }
 const statScreenBuffer = new term.ScreenBuffer({
 	dst: term.terminal,
@@ -127,12 +142,21 @@ function clearLogText() {
 	logTextBuffer.moveTo(0, 0);
 	logDraw();
 }
+function exit() {
+	if (writeHistory) {
+		if (inputHistory.length > historyLimit && historyLimit > 0) inputHistory = inputHistory.splice((inputHistory.length - 1) - historyLimit);
+		fs.writeFileSync(historyPath, JSON.stringify(inputHistory));
+	}
+	process.exit(0);
+}
 var exiting = false;
 term.terminal.on("key", (name, data) => {
 	if (name === "CTRL_C") {
-		if (exiting) process.exit(0);
+		if (exiting) exit();
 		exiting = true;
 		logText("(To exit, press ^C again or type .exit)\n");
+	} else if (name === "CTRL_S") {
+
 	} else if (name === "PAGE_DOWN") {
 		logScroll(1);
 		drawStats();
@@ -161,7 +185,7 @@ process.stdout.write("> ");
 term.terminal.saveCursor();
 var hzDisp = new Dispatcher();
 logText("Loaded hertzscript-dispatcher v0.0.1\n\
-Welcome to the concurrent HertzScript REPL!\n\
+Welcome to the concurrent HertzScript-Velocity REPL!\n\
 Press PageUp/PageDown to scroll.\n\
 ");
 const asyncRunner = () => {
@@ -177,7 +201,6 @@ const asyncRunner = () => {
 	if (!hzDisp.running) return;
 	setTimeout(asyncRunner, 100);
 };
-const inputHistory = [];
 const inputHandler = () => {
 	term.terminal.inputField({
 		cancelable: true,
@@ -191,7 +214,7 @@ const inputHandler = () => {
 			return;
 		}
 		term.terminal.eraseLine();
-		if (input === ".exit") process.exit(0);
+		if (input === ".exit") exit();
 		if (inputHistory[inputHistory.length - 1] !== input) inputHistory.push(input);
 		// Interrupt a prior 1x ^C
 		exiting = false;
