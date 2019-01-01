@@ -150,94 +150,92 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 	const complete = quantum === false;
 	if (complete) debugLog("Starting Dispatcher in run-to-completion mode...");
 	if (quantum === null) quantum = this.quantum;
-	const qStart = performance.now();
-	cycle: while (complete || performance.now() - qStart <= quantum) {
+	const qEnd = performance.now() + quantum;
+	cycle: while (complete || performance.now() < qEnd) {
 		const cStart = performance.now();
 		debugLog("Cycling Dispatcher...");
 		debugLog("Current Metrics:");
 		debugLog(this.metrics);
-		while (true) {
-			if (!this.running || this.blocks.length === 0) {
-				!this.running ? debugLog("Stopping Dispatcher because the Stop signal was received...\n")
-					: debugLog("Stopping Dispatcher because all ControlBlock Stacks are empty...\n");
-				// Dispatcher is not running, or ControlBlock stack is empty, so abort
-				this.stop();
-				return;
-			}
-			if (this.blockIndex >= this.blocks.length || this.blockIndex < 0) this.blockIndex = 0;
-			this.activeBlock = this.blocks[this.blockIndex];
-			const block = this.activeBlock;
-			debugLog("\n\x1b[32mControlBlock " + this.blockIndex + " loaded\x1b[0m");
-			if (block.stack.length === 0) {
-				this.blocks.splice(this.blockIndex, 1);
-				this.blockIndex--;
-			}
-			if (block.waiting) {
-				debugLog("ControlBlock is waiting, so Dispatcher is skipping...");
-				this.blockIndex++;
-				continue;
-			}
-			if (block.stack.length > 0) (debugLog("Stack Snapshot:"), debugTable(block.stack));
-			else debugLog("ControlBlock Stack is Empty");
-			// Advance execution of the last Functor in the virtual stack
-			try {
-				const hzFunctor = block.stack[block.stack.length - 1];
-				debugLog("Dispatching hzFunctor:");
-				hzFunctor.log();
-				if (block.lastReturn !== null) (debugLog("With value:"), debugLog(block.lastReturn));
-				// Advances execution of the hzFunctor and saves the yielded state
-				if (block.lastError !== null) {
-					debugLog("Throwing Error into hzFunctor...");
-					// Uncaught error was seen before, so throw it into the hzFunctor
-					var state = hzFunctor.throwIntoFunctor(block.lastError);
-					block.lastError = null;
-				} else {
-					// A value was returned or yielded before, so invoke the hzFunctor with it
-					var state = block.lastReturn !== null ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
-					block.lastReturn = null;
-				}
-				// Return the yielded state of the hzFunctor
-				debugLog("hzFunctor yielded State:");
-				debugLog(state);
-				if (hzFunctor.type === "iterator") hzFunctor.args = [];
-				if (hzFunctor.type === "generator") {
-					state = this.detourLib.hookIterator(state);
-				} else if (hzFunctor.type === "unknown") {
-					if ((typeof state) === "undefined") state = this.tokenLib.return;
-					else state = this.tokenLib.returnValue.set([state]);
-				} else if (hzFunctor.type !== "generator") {
-					if (!(this.tokenLib.symbols.tokenSym in hzFunctor.image)) state = this.tokenLib.returnValue.set([state]);
-					else if (!this.isKernelized(state.value)) {
-						if ((typeof state.value) === "undefined") state = this.tokenLib.return;
-						else state = this.tokenLib.returnValue.set([state.value]);
-					} else {
-						state = state.value;
-					}
-				}
-				if (hzFunctor.type === "constructor") {
-					if (state === this.tokenLib.return || (state === this.tokenLib.returnValue && (typeof state.arg) === "undefined")) {
-						state = this.tokenLib.returnValue.set([hzFunctor.thisArg]);
-					}
-				}
-				// Collect resultant state and process any instructions
-				this.processState(state);
-			} catch (error) {
-				debugLog("Uncaught Error was thrown! Terminating end of stack...");
-				debugError(error);
-				// Uncaught error, so end the hzFunctor
-				this.killLast(block);
-				block.lastError = error;
-				if (block.stack.length === 0) {
-					debugLog("Stopping Dispatcher due to an uncaught error...\n");
-					this.stop();
-					throw error;
-				}
-			}
-			this.blockIndex++;
-			// Update metrics
-			this.metrics.makeflight = performance.now() - cStart;
-			this.metrics.makespan += this.metrics.makeflight;
+		if (!this.running || this.blocks.length === 0) {
+			!this.running ? debugLog("Stopping Dispatcher because the Stop signal was received...\n")
+				: debugLog("Stopping Dispatcher because all ControlBlock Stacks are empty...\n");
+			// Dispatcher is not running, or ControlBlock stack is empty, so abort
+			this.stop();
+			return;
 		}
+		if (this.blockIndex >= this.blocks.length || this.blockIndex < 0) this.blockIndex = 0;
+		this.activeBlock = this.blocks[this.blockIndex];
+		const block = this.activeBlock;
+		debugLog("\n\x1b[32mControlBlock " + this.blockIndex + " loaded\x1b[0m");
+		if (block.stack.length === 0) {
+			this.blocks.splice(this.blockIndex, 1);
+			this.blockIndex--;
+		}
+		if (block.waiting) {
+			debugLog("ControlBlock is waiting, so Dispatcher is skipping...");
+			this.blockIndex++;
+			continue;
+		}
+		if (block.stack.length > 0) (debugLog("Stack Snapshot:"), debugTable(block.stack));
+		else debugLog("ControlBlock Stack is Empty");
+		// Advance execution of the last Functor in the virtual stack
+		try {
+			const hzFunctor = block.stack[block.stack.length - 1];
+			debugLog("Dispatching hzFunctor:");
+			hzFunctor.log();
+			if (block.lastReturn !== null) (debugLog("With value:"), debugLog(block.lastReturn));
+			// Advances execution of the hzFunctor and saves the yielded state
+			if (block.lastError !== null) {
+				debugLog("Throwing Error into hzFunctor...");
+				// Uncaught error was seen before, so throw it into the hzFunctor
+				var state = hzFunctor.throwIntoFunctor(block.lastError);
+				block.lastError = null;
+			} else {
+				// A value was returned or yielded before, so invoke the hzFunctor with it
+				var state = block.lastReturn !== null ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
+				block.lastReturn = null;
+			}
+			// Return the yielded state of the hzFunctor
+			debugLog("hzFunctor yielded State:");
+			debugLog(state);
+			if (hzFunctor.type === "iterator") hzFunctor.args = [];
+			if (hzFunctor.type === "generator") {
+				state = this.detourLib.hookIterator(state);
+			} else if (hzFunctor.type === "unknown") {
+				if ((typeof state) === "undefined") state = this.tokenLib.return;
+				else state = this.tokenLib.returnValue.set([state]);
+			} else if (hzFunctor.type !== "generator") {
+				if (!(this.tokenLib.symbols.tokenSym in hzFunctor.image)) state = this.tokenLib.returnValue.set([state]);
+				else if (!this.isKernelized(state.value)) {
+					if ((typeof state.value) === "undefined") state = this.tokenLib.return;
+					else state = this.tokenLib.returnValue.set([state.value]);
+				} else {
+					state = state.value;
+				}
+			}
+			if (hzFunctor.type === "constructor") {
+				if (state === this.tokenLib.return || (state === this.tokenLib.returnValue && (typeof state.arg) === "undefined")) {
+					state = this.tokenLib.returnValue.set([hzFunctor.thisArg]);
+				}
+			}
+			// Collect resultant state and process any instructions
+			this.processState(state);
+		} catch (error) {
+			debugLog("Uncaught Error was thrown! Terminating end of stack...");
+			debugError(error);
+			// Uncaught error, so end the hzFunctor
+			this.killLast(block);
+			block.lastError = error;
+			if (block.stack.length === 0) {
+				debugLog("Stopping Dispatcher due to an uncaught error...\n");
+				this.stop();
+				throw error;
+			}
+		}
+		this.blockIndex++;
+		// Update metrics
+		this.metrics.makeflight = performance.now() - cStart;
+		this.metrics.makespan += this.metrics.makeflight;
 	}
 };
 Dispatcher.prototype.runComplete = function () {
@@ -246,8 +244,8 @@ Dispatcher.prototype.runComplete = function () {
 Dispatcher.prototype.runSync = function (quantum = null) {
 	debugLog("Beginning synchronous execution...");
 	this.running = true;
-	while (this.running) this.cycle(quantum);
-	return this.lastReturn;
+	return this.cycle(quantum);
+	if (!this.running) return this.lastReturn;
 };
 Dispatcher.prototype.runAsync = function (interval = 300, quantum = null) {
 	if (this.running) return;
