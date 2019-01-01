@@ -111,8 +111,6 @@ function logText(str) {
 	startIndex = textLines.length - (process.stdout.rows - 4);
 	if (startIndex < 0) startIndex = 0;
 	logTextBuffer.setText(textLines.slice(startIndex).join("\n"));
-	//term.terminal.moveTo(0,0);
-	//process.stdout.write(drawBox(process.stdout.rows - 2, process.stdout.columns - 4));
 	logDraw();
 }
 function logScroll(offset) {
@@ -194,6 +192,7 @@ const inputHandler = () => {
 		}
 		term.terminal.eraseLine();
 		if (input === ".exit") process.exit(0);
+		if (inputHistory[inputHistory.length - 1] !== input) inputHistory.push(input);
 		// Interrupt a prior 1x ^C
 		exiting = false;
 		term.terminal.restoreCursor();
@@ -210,10 +209,7 @@ const inputHandler = () => {
 			hzDisp.import(hzModule(exports, require, module, __filename, __dirname));
 			if (!hzDisp.running) setTimeout(asyncRunner, 30);
 		} catch (error) {
-			cConsole.startCapture();
-			console.error(error);
-			cConsole.stopCapture();
-			drawCapture();
+			logText(error);
 		}
 		drawStats();
 		term.terminal.eraseLine();
