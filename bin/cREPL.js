@@ -18,12 +18,12 @@ const pipes = {
 	rightT: "┤"
 };
 function drawBox(height, width) {
-	const horizLine = new Array(width).fill(pipes.horizLine).join("");
+	const horizLine = new Array(width - 2).fill(pipes.horizLine).join("");
 	const top = pipes.topLeft + horizLine + pipes.topRight;
 	const bot = pipes.botLeft + horizLine + pipes.botRight;
 	const spaces = new Array(top.length - 2).fill(" ").join("");
 	const middleRow = pipes.vertLine + spaces + pipes.vertLine + "\n";
-	const middle = new Array(height).fill(middleRow).join("");
+	const middle = new Array(height - 1).fill(middleRow).join("");
 	return "\n" + top + "\n" + middle + bot + "\n";
 }
 const statScreenBuffer = new term.ScreenBuffer({
@@ -64,7 +64,7 @@ function drawStats() {
 	statScreenBuffer.draw();
 	term.terminal.restoreCursor();
 }
-process.stdout.write(drawBox(process.stdout.rows - 1, process.stdout.columns - 2));
+process.stdout.write(drawBox(process.stdout.rows - 2, process.stdout.columns));
 function wordWrap(str, width) {
 	if (str.length <= width) return str;
 	var count = 0;
