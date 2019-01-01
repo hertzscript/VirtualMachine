@@ -35,7 +35,9 @@
 		"hzs": "node ./bin/executeCLI.js",
 		"hzscript": "node ./bin/executeCLI.js",
 		"hzr": "node ./bin/REPL.js",
-		"hzrepl": "node ./bin/REPL.js"
+		"hzrepl": "node ./bin/REPL.js",
+		"hzvelocity": "node ./bin/cREPL.js",
+		"hzv": "node ./bin/cREPL.js"
 	},
 	"author": "Dani Glore (https://github.com/Floofies)",
 	"license": "MIT",
