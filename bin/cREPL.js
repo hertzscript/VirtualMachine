@@ -145,9 +145,10 @@ function clearLogText() {
 }
 function exit() {
 	if (writeHistory && inputHistory.length > 0 && inputHistory.length !== prevHistory.length) {
-		if (inputHistory.length > historyLimit && historyLimit > 0) inputHistory = inputHistory.splice((inputHistory.length - 1) - (historyLimit - 1));
-		if (inputHistory.length > prevHistory.length) inputHistory = inputHistory.splice((inputHistory.length - 1) - (prevHistory.length - 1));
-		fs.writeFileSync(historyPath, inputHistory.join("\n"));
+		if (inputHistory.length > historyLimit && historyLimit > 0) inputHistory = inputHistory.slice((inputHistory.length - 1) - (historyLimit - 1));
+		if (inputHistory.length > prevHistory.length && prevHistory.length > 0) inputHistory = inputHistory.slice(prevHistory.length);
+		if (!fs.existsSync(historyPath)) fs.closeSync(fs.openSync(historyPath, 'w'));
+		fs.appendFileSync(historyPath, (prevHistory.length > 0 ? "\n" : "") + inputHistory.join("\n"));
 	}
 	process.exit(0);
 }
