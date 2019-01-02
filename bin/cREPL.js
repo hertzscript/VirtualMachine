@@ -13,16 +13,7 @@ else var historyPath = os.homedir() + "/.hertzscript_repl_history";
 const writeHistory = historyPath !== "";
 if (writeHistory && !fs.existsSync(historyPath)) fs.closeSync(fs.openSync(historyPath, 'w'));
 if (writeHistory) var history = fs.readFileSync(historyPath).toString();
-if (writeHistory && history.length > 0) {
-	var prevHistory = [[]];
-	for (const char of history) {
-		if (char === "\n") {
-			prevHistory[prevHistory.length - 1] = prevHistory[prevHistory.length - 1].join("");
-			prevHistory.push([]);
-		} else prevHistory[prevHistory.length - 1].push(char);
-	}
-	prevHistory[prevHistory.length - 1] = prevHistory[prevHistory.length - 1].join("");
-}
+if (writeHistory && history.length > 0) var prevHistory = history.split("\n");
 else var prevHistory = null;
 if (prevHistory !== null) var inputHistory = prevHistory;
 else var inputHistory = [];
@@ -153,7 +144,8 @@ function clearLogText() {
 }
 function exit() {
 	if (writeHistory) {
-		if (inputHistory.length > historyLimit && historyLimit > 0) inputHistory = inputHistory.splice((inputHistory.length - 1) - historyLimit);
+		if (inputHistory.length > historyLimit && historyLimit > 0) inputHistory = inputHistory.splice((inputHistory.length - 1) - (historyLimit - 1));
+		if (inputHistory.length > prevHistory.length) inputHistory = inputHistory.splice((inputHistory.length - 1) - (prevHistory.length - 1));
 		fs.writeFileSync(historyPath, inputHistory.join("\n"));
 	}
 	process.exit(0);
