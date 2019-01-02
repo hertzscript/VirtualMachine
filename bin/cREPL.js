@@ -11,12 +11,13 @@ else var historyLimit = 1000;
 if ("HZREPL_HISTORY" in process.env) var historyPath = process.env.HZREPL_HISTORY;
 else var historyPath = os.homedir() + "/.hertzscript_repl_history";
 const writeHistory = historyPath !== "";
-if (writeHistory && !fs.existsSync(historyPath)) fs.closeSync(fs.openSync(historyPath, 'w'));
-if (writeHistory) var history = fs.readFileSync(historyPath).toString();
-if (writeHistory && history.length > 0) var prevHistory = history.split("\n");
-else var prevHistory = null;
-if (prevHistory !== null) var inputHistory = prevHistory;
-else var inputHistory = [];
+var prevHistory = [];
+if (writeHistory) {
+	if (!fs.existsSync(historyPath)) fs.closeSync(fs.openSync(historyPath, 'w'));
+	const history = fs.readFileSync(historyPath).toString();
+	if (history.length > 0) prevHistory = history.split("\n");
+}
+var inputHistory = [].concat(prevHistory);
 const pipes = {
 	vertLine: "│",
 	horizLine: "─",
@@ -143,7 +144,7 @@ function clearLogText() {
 	logDraw();
 }
 function exit() {
-	if (writeHistory) {
+	if (writeHistory && inputHistory.length > 0 && inputHistory.length !== prevHistory.length) {
 		if (inputHistory.length > historyLimit && historyLimit > 0) inputHistory = inputHistory.splice((inputHistory.length - 1) - (historyLimit - 1));
 		if (inputHistory.length > prevHistory.length) inputHistory = inputHistory.splice((inputHistory.length - 1) - (prevHistory.length - 1));
 		fs.writeFileSync(historyPath, inputHistory.join("\n"));
