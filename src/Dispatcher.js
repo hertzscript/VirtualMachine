@@ -3,6 +3,7 @@ const HzFunctor = require("./HzFunctor.js");
 const TokenLib = require("./lib/TokenLib.js");
 const DetourLib = require("./lib/DetourLib.js");
 const UserLib = require("./lib/UserLib.js");
+const RunQueue = require("./lib/RunQueue.js");
 const debug = false;
 if (debug) require("console-buffer")(4096);
 function debugLog(str) {
@@ -13,23 +14,6 @@ function debugTable(obj) {
 }
 function debugError(error) {
 	if (debug) console.error(error);
-}
-// A type of low level Stack Control Block
-function ControlBlock() {
-	// A virtual stack of hzFunctors and Functions
-	this.stack = [];
-	// The last new return value seen by the Dispatcher
-	this.lastReturn = null;
-	// The last new Error seen by the Dispatcher
-	this.lastError = null;
-	// Pauses a stack's execution
-	this.waiting = false;
-	this.metrics = {
-		// Last Cycle time
-		makeflight: 0,
-		// Total running time
-		makespan: 0
-	};
 }
 function Dispatcher(tokenLib = null, quantum = 300000000) {
 	// Instruction Token Library
@@ -46,14 +30,12 @@ function Dispatcher(tokenLib = null, quantum = 300000000) {
 	this.quantum = quantum;
 	// Set to "true" when the Dispatcher is running
 	this.running = false;
-	// The ControlBlock stack
-	this.blocks = [];
-	// The current active ControlBlock
-	this.activeBlock = null;
-	// The current active ControlBlock index
-	this.blockIndex = 0;
+	// The ControlBlock queue
+	this.queue = new RunQueue();
 	this.metrics = {
+		// Last Cycle time
 		makeflight: 0,
+		// Total running time
 		makespan: 0
 	};
 }
@@ -66,11 +48,7 @@ Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null) {
 	debugLog("Enqueuing Functor:");
 	debugLog(functor);
 	debugLog(Object.keys(functor).join());
-	if (this.blocks.length === 0) {
-		this.spawn(functor, thisArg, args);
-	} else {
-		this.activeBlock.stack.push(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
-	}
+	this.queue.enqueue(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
 };
 // Add a hzFunctor to a new ControlBlock
 Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
@@ -78,9 +56,7 @@ Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
 	debugLog("Spawning Functor in new ControlBlock:");
 	debugLog(functor);
 	debugLog(Object.keys(functor).join());
-	const block = new ControlBlock();
-	block.stack.push(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
-	this.blocks.push(block);
+	this.queue.spawn(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
 };
 Dispatcher.prototype.import = function (hzModule) {
 	this.spawn(hzModule(this.userLib));
@@ -93,19 +69,12 @@ Dispatcher.prototype.exec = function (functor, thisArg = null, args = null) {
 // Pop and terminate a Functor from the stack
 Dispatcher.prototype.killLast = function () {
 	debugLog("Killing last Functor in the ControlBlock");
-	if (this.activeBlock.stack.length > 0) this.activeBlock.stack.pop().returnFromFunctor();
-	if (this.activeBlock.stack.length === 0) {
-		debugLog("Pruning empty ControlBlock");
-		this.blocks.splice(this.blockIndex, 1);
-		this.blockIndex--;
-	}
+	this.queue.killLast();
 };
 // Pop and terminate all Functors in the stack
 Dispatcher.prototype.killAll = function () {
 	debugLog("Killing all Functors in the ControlBlock");
-	while (this.activeBlock.stack.length > 0) this.killLast(this.activeBlock);
-	this.blocks.splice(this.blockIndex, 1);
-	this.blockIndex--;
+	this.queue.killAll();
 };
 // Processes a kernelized instruction
 Dispatcher.prototype.processState = function (token) {
@@ -114,13 +83,13 @@ Dispatcher.prototype.processState = function (token) {
 	// Interprets an instruction token into stack operations
 	if (token.type === "loopYield") return;
 	if (token.type === "returnValue") {
-		this.killLast(this.activeBlock);
-		this.activeBlock.lastReturn = token.arg;
+		this.queue.killLast();
+		this.queue.activeBlock.lastReturn = token.arg;
 	} else if (token.type === "yieldValue") {
-		this.activeBlock.stack.pop();
-		this.activeBlock.lastReturn = token.arg;
-	} else if (token.type === "return") this.killLast(this.activeBlock);
-	else if (token.type === "yield") this.activeBlock.stack.pop();
+		this.queue.activeBlock.stack.pop();
+		this.queue.activeBlock.lastReturn = token.arg;
+	} else if (token.type === "return") this.queue.killLast();
+	else if (token.type === "yield") this.queue.activeBlock.stack.pop();
 	else if (token.type === "call") this.enqueue(token.functor);
 	else if (token.type === "callArgs") this.enqueue(token.functor, null, token.args);
 	else if (token.type === "callMethod") this.enqueue(token.object[token.property], token.object, null);
@@ -145,7 +114,7 @@ Dispatcher.prototype.processState = function (token) {
 	else throw new TypeError("Illegal Instruction Kernel \"" + token.type + "\"");
 };
 // Runs a single execution cycle
-Dispatcher.prototype.cycle = function (quantum = null) {
+Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 	debugLog("Cycle Invoked");
 	const complete = quantum === false;
 	if (complete) debugLog("Starting Dispatcher in run-to-completion mode...");
@@ -156,28 +125,21 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 		debugLog("Cycling Dispatcher...");
 		debugLog("Current Metrics:");
 		debugLog(this.metrics);
-		if (!this.running || this.blocks.length === 0) {
+		if (!this.running || this.queue.blocks.length === 0) {
 			!this.running ? debugLog("Stopping Dispatcher because the Stop signal was received...\n")
 				: debugLog("Stopping Dispatcher because all ControlBlock Stacks are empty...\n");
 			// Dispatcher is not running, or ControlBlock stack is empty, so abort
 			this.stop();
 			return;
 		}
-		if (this.blockIndex >= this.blocks.length || this.blockIndex < 0) this.blockIndex = 0;
-		this.activeBlock = this.blocks[this.blockIndex];
-		const block = this.activeBlock;
-		debugLog("\n\x1b[32mControlBlock " + this.blockIndex + " loaded\x1b[0m");
-		if (block.stack.length === 0) {
-			this.blocks.splice(this.blockIndex, 1);
-			this.blockIndex--;
+		const block = this.queue.getNext();
+		if (block === null) {
+			this.stop();
+			return;
 		}
-		if (block.waiting) {
-			debugLog("ControlBlock is waiting, so Dispatcher is skipping...");
-			this.blockIndex++;
-			continue;
-		}
-		if (block.stack.length > 0) (debugLog("Stack Snapshot:"), debugTable(block.stack));
-		else debugLog("ControlBlock Stack is Empty");
+		debugLog("\n\x1b[32mControlBlock " + this.queue.blockIndex + " loaded\x1b[0m");
+		debugLog("Stack Snapshot:");
+		debugTable(block.stack);
 		// Advance execution of the last Functor in the virtual stack
 		try {
 			const hzFunctor = block.stack[block.stack.length - 1];
@@ -224,47 +186,54 @@ Dispatcher.prototype.cycle = function (quantum = null) {
 			debugLog("Uncaught Error was thrown! Terminating end of stack...");
 			debugError(error);
 			// Uncaught error, so end the hzFunctor
-			this.killLast(block);
+			this.queue.killLast();
 			block.lastError = error;
 			if (block.stack.length === 0) {
-				debugLog("Stopping Dispatcher due to an uncaught error...\n");
-				this.stop();
-				throw error;
+				if (throwUp) {
+					debugLog("Stopping Dispatcher due to an uncaught error...\n");
+					this.stop();
+					throw error;
+				} else {
+					debugLog("Killing current ControlBlock due to an uncaught error...\n");
+					console.error(error);
+				}
 			}
 		}
-		this.blockIndex++;
-		// Update metrics
+		// Update dispactcher metrics
 		this.metrics.makeflight = performance.now() - cStart;
 		this.metrics.makespan += this.metrics.makeflight;
+		// Update ControlBlock metrics
+		block.metrics.makeflight = performance.now() - cStart;
+		block.metrics.makespan += block.metrics.makeflight;
 	}
 };
-Dispatcher.prototype.runComplete = function () {
-	return this.runSync(false);
+Dispatcher.prototype.runComplete = function (throwUp = false) {
+	return this.runSync(false, throwUp);
 };
-Dispatcher.prototype.runSync = function (quantum = null) {
+Dispatcher.prototype.runSync = function (quantum = null, throwUp = false) {
 	debugLog("Beginning synchronous execution...");
 	this.running = true;
-	return this.cycle(quantum);
+	return this.cycle(quantum, throwUp);
 	if (!this.running) return this.lastReturn;
 };
-Dispatcher.prototype.runAsync = function (interval = 300, quantum = null) {
+Dispatcher.prototype.runAsync = function (interval = 300, quantum = null, throwUp = false) {
 	if (this.running) return;
 	debugLog("Beginning asynchronous execution...");
 	return new Promise((resolve) => {
 		const asyncRunner = () => {
-			this.runSync(quantum);
+			this.runSync(quantum, throwUp);
 			if (!this.running) return resolve(this.lastReturn);
 			setTimeout(asyncRunner, interval);
 		};
 		setTimeout(asyncRunner, interval);
 	});
 };
-Dispatcher.prototype.runIterator = function* (quantum = null) {
-	while (this.runSync(quantum)) yield;
+Dispatcher.prototype.runIterator = function* (quantum = null, throwUp = false) {
+	while (this.running) yield this.runSync(quantum, throwUp);
 };
 Dispatcher.prototype.stop = function () {
-	this.blockIndex = 0;
-	this.activeBlock = null;
+	this.queue.blockIndex = 0;
+	this.queue.activeBlock = null;
 	this.running = false;
 };
 module.exports = Dispatcher;

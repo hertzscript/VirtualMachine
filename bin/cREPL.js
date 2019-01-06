@@ -62,7 +62,7 @@ function drawStats() {
 	if (startIndex === 0) var scrollText = "Scroll: 0% ";
 	else var scrollText = "Scroll: " + ((startIndex / textLines.length) * 100).toFixed() + "% ";
 	var linesText = " Lines: " + textLines.length;
-	var titleText = "HzVelocity REPL | " + hzDisp.blocks.length + " Coroutines Running";
+	var titleText = "HzVelocity REPL | " + hzDisp.queue.blocks.length + " Coroutines Running";
 	var spacesLen = Number(((process.stdout.columns - (scrollText.length + linesText.length + titleText.length)) / 2).toFixed());
 	var spaces = (new Array(spacesLen)).fill(" ").join("");
 	var text = linesText + spaces + titleText + spaces + scrollText;
