@@ -15,7 +15,6 @@ if ("path" in mainOptions) {
 if ("_unknown" in mainOptions) {
 	const cliOptions = [
 		{ name: "input", alias: "i", type: String },
-		{ name: "output", alias: "o", type: String },
 		{ name: "source", alias: "s", type: String },
 		{ name: "compile", alias: "c", type: Boolean },
 		{ name: "spawn", type: Boolean }
@@ -24,12 +23,11 @@ if ("_unknown" in mainOptions) {
 	if ("path" in mainOptions) args.input = mainOptions.path;
 }
 if (!("input" in args)) args.input = null;
-if (!("output" in args)) args.output = null;
 if (!("source" in args)) args.source = null;
 if (!("compile" in args)) args.compile = false;
 if (!("spawn" in args)) args.spawn = false;
 function execute(source) {
-	if (args.compile && args.output !== null) console.log("Compiling...");
+	if (args.compile) console.log("Compiling with hertzscript-compiler.");
 	return hzExec(source, args.compile, args.spawn);
 }
 function inputSource(input, callback) {
@@ -56,7 +54,7 @@ if (args.source !== null) {
 		process.exitCode = 1;
 		return;
 	}
-	if (args.output !== null) console.log("Opening " + args.input + " for execution.");
+	console.log("Opening " + args.input + " for execution.");
 	inputSource(args.input, execute);
 } else {
 	stdInSource(execute);
