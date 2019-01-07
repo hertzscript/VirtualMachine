@@ -42,7 +42,7 @@
 	"author": "Dani Glore (https://github.com/Floofies)",
 	"license": "MIT",
 	"dependencies": {
-		"hertzscript-compiler": "^0.0.2",
+		"hertzscript-compiler": "^0.0.3",
 		"console-buffer": "^1.0.1",
 		"command-line-args": "^5.0.2",
 		"terminal-kit": "^1.26.8"
