@@ -49,11 +49,6 @@ function stdInSource(callback) {
 if (args.source !== null) {
 	execute(args.source);
 } else if (args.input !== null) {
-	if (args.input === null) {
-		console.error("Error: No script source given!");
-		process.exitCode = 1;
-		return;
-	}
 	console.log("Opening " + args.input + " for execution.");
 	inputSource(args.input, execute);
 } else {
