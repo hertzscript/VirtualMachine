@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Sequential REPL
 const Dispatcher = require("../src/Dispatcher.js");
 const hzDisp = new Dispatcher();

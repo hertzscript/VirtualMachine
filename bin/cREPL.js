@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // Concurrent REPL
 const Dispatcher = require("../src/Dispatcher.js");
 const hzCompile = require("hertzscript-compiler");
