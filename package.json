@@ -1,7 +1,7 @@
 {
 	"name": "hertzscript-dispatcher",
 	"version": "0.0.1",
-	"description": "A system that executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
+	"description": "Executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
 	"keywords": [
 		"javascript",
 		"preemption",
