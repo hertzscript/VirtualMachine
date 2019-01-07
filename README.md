@@ -54,7 +54,7 @@ Execute source code with optional hot-compiling via `stdin`, argument, or file i
 
 `--spawn`
 
-- If set in addition `--compile` option, then `hertzscript-compiler` will be used to detect and compile the `spawn` keyword. If the `--compile` option is not present, then this option will do nothing.
+- If set in addition to the `--compile` option, then `hertzscript-compiler` will be used to detect and compile the `spawn` keyword. If the `--compile` option is not present, then this option will do nothing.
 
 ### `hzv` / `hzvelocity`
 
@@ -68,7 +68,7 @@ Opens the concurrent HertzScript Velocity REPL which is designed specifically fo
 
 ### `hzr` / `hzrepl`
 
-Non-Concurrent REPL which behaves more like a traditional NodeJS REPL. This REPL lacks a status bar and virtual console window and runs all code in run-to-completion mode which blocks the REPL until the all code has completed running.
+Opens a non-Concurrent REPL which behaves more like a traditional NodeJS REPL. This REPL lacks a status bar and virtual console window and runs all code in run-to-completion mode which blocks the REPL until the all code has completed running.
 
 - To run code, simply type it at the bottom and press enter.
 
@@ -81,7 +81,7 @@ Non-Concurrent REPL which behaves more like a traditional NodeJS REPL. This REPL
 The dispatcher itself is the main module, so you can import it simply like this:
 
 ```JavaScript
-const Dispatcher = require("hertzcript-dispatcher");
+const Dispatcher = require("hertzscript-dispatcher");
 ```
 
 ### `Dispatcher.prototype.import`
