@@ -5,20 +5,18 @@ The HertzScript coroutine dispatcher executes code that was compiled by the [Her
 See the [HertzScript Specification](https://github.com/Floofies/hertzscript-specification) repository for more information.
 
 - [Command-Line Interfaces](#command-line-interfaces)
-	- [`hzs` / `hzscript`](#hzs-hzscript)
-	- [`hzv` / `hzvelocity`](#hzv-hzvelocty)
-	- [`hzr` / `hzrepl`](#hzr-hzrepl)
+	- [`hzs` / `hzscript`](#hzs--hzscript)
+	- [`hzv` / `hzvelocity`](#hzv--hzvelocty)
+	- [`hzr` / `hzrepl`](#hzr--hzrepl)
 - [Dispatcher Module](#dispatcher-module)
-	- [`import`](#dispatcher-prototype-import)
-	- [`exec`](#dispatcher-prototype-exec)
-	- [`spawn`](#dispatcher-prototype-spawn)
-	- [`enqueue`](#dispatcher-prototype-enqueue)
-	- [`cycle`](#dispatcher-prototype-cycle)
-	- [`runSync`](#dispatcher-prototype-runsync)
-	- [`runAsync`](#dispatcher-prototype-runasync)
-	- [`runComplete`](#dispatcher-prototype-runcomplete)
-	- [`killLast`](#dispatcher-prototype-spawn)
-	- [`killAll`](#dispatcher-prototype-spawn)
+	- [`import`](#dispatcherprototypeimport)
+	- [`exec`](#dispatcherprototypeexec)
+	- [`spawn`](#dispatcherprototypespawn)
+	- [`enqueue`](#dispatcherprototypeenqueue)
+	- [`cycle`](#dispatcherprototypecycle)
+	- [`runSync`](#dispatcherprototyperunsync)
+	- [`runAsync`](#dispatcherprototyperunasync)
+	- [`runComplete`](#dispatcherprototyperuncomplete)
 
 
 There are multiple ways to use this dispatcher.
