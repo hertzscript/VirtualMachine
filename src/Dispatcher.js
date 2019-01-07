@@ -32,6 +32,8 @@ function Dispatcher(tokenLib = null, quantum = 300000000) {
 	this.running = false;
 	// The ControlBlock queue
 	this.queue = new RunQueue();
+	this.lastError = undefined;
+	this.lastReturn = undefined;
 	this.metrics = {
 		// Last Cycle time
 		makeflight: 0,
@@ -130,12 +132,12 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 				: debugLog("Stopping Dispatcher because all ControlBlock Stacks are empty...\n");
 			// Dispatcher is not running, or ControlBlock stack is empty, so abort
 			this.stop();
-			return;
+			return this.lastReturn;
 		}
 		const block = this.queue.getNext();
 		if (block === null) {
 			this.stop();
-			return;
+			return this.lastReturn;
 		}
 		debugLog("\n\x1b[32mControlBlock " + this.queue.blockIndex + " loaded\x1b[0m");
 		debugLog("Stack Snapshot:");
@@ -182,12 +184,14 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 			}
 			// Collect resultant state and process any instructions
 			this.processState(state);
+			this.lastReturn = block.lastReturn;
 		} catch (error) {
 			debugLog("Uncaught Error was thrown! Terminating end of stack...");
 			debugError(error);
 			// Uncaught error, so end the hzFunctor
 			this.queue.killLast();
 			block.lastError = error;
+			this.lastError = error;
 			if (block.stack.length === 0) {
 				if (throwUp) {
 					debugLog("Stopping Dispatcher due to an uncaught error...\n");
@@ -206,6 +210,7 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 		block.metrics.makeflight = performance.now() - cStart;
 		block.metrics.makespan += block.metrics.makeflight;
 	}
+	return this.lastReturn;
 };
 Dispatcher.prototype.runComplete = function (throwUp = false) {
 	return this.runSync(false, throwUp);
@@ -216,7 +221,7 @@ Dispatcher.prototype.runSync = function (quantum = null, throwUp = false) {
 	return this.cycle(quantum, throwUp);
 	if (!this.running) return this.lastReturn;
 };
-Dispatcher.prototype.runAsync = function (interval = 300, quantum = null, throwUp = false) {
+Dispatcher.prototype.runAsync = function (interval = 30, quantum = null, throwUp = false) {
 	if (this.running) return;
 	debugLog("Beginning asynchronous execution...");
 	return new Promise((resolve) => {
@@ -227,9 +232,6 @@ Dispatcher.prototype.runAsync = function (interval = 300, quantum = null, throwU
 		};
 		setTimeout(asyncRunner, interval);
 	});
-};
-Dispatcher.prototype.runIterator = function* (quantum = null, throwUp = false) {
-	while (this.running) yield this.runSync(quantum, throwUp);
 };
 Dispatcher.prototype.stop = function () {
 	this.queue.blockIndex = 0;
