@@ -13,6 +13,7 @@
 		"coroutine",
 		"coroutine-dispatcher",
 		"concurrency",
+		"automatic-concurrency",
 		"concurrent",
 		"concurrent-programming",
 		"concurrent-javascript",
