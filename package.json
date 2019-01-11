@@ -23,13 +23,13 @@
 		"preemptive-multitasking",
 		"voluntary-preemtive-multitasking"
 	],
-	"homepage": "https://github.com/Floofies/HertzScript#readme",
+	"homepage": "https://github.com/Floofies/hertzscript-dispatcher#readme",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Floofies/HertzScript.git"
+		"url": "https://github.com/Floofies/hertzscript-dispatcher.git"
 	},
 	"bugs": {
-		"url": "https://github.com/Floofies/HertzScript/issues"
+		"url": "https://github.com/Floofies/hertzscript-dispatcher/issues"
 	},
 	"main": "src/Dispatcher.js",
 	"bin": {
