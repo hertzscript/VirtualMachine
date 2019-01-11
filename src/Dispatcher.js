@@ -207,7 +207,7 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 		this.metrics.makeflight = performance.now() - cStart;
 		this.metrics.makespan += this.metrics.makeflight;
 		// Update ControlBlock metrics
-		block.metrics.makeflight = performance.now() - cStart;
+		block.metrics.makeflight = this.metrics.makeflight;
 		block.metrics.makespan += block.metrics.makeflight;
 	}
 	return this.lastReturn;
