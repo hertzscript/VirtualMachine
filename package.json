@@ -41,6 +41,9 @@
 		"hzv": "./bin/cREPL.js"
 	},
 	"author": "Dani Glore (https://github.com/Floofies)",
+	"contributors": [
+		"Thomas G. (https://github.com/trgwii)"
+	],
 	"license": "MIT",
 	"dependencies": {
 		"command-line-args": "^5.0.2",
