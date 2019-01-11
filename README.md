@@ -84,6 +84,8 @@ The dispatcher itself is the main module, so you can import it simply like this:
 
 ```JavaScript
 const Dispatcher = require("hertzscript-dispatcher");
+// Instantiate the Class
+const dispatcher = new Dispatcher();
 ```
 
 ### `Dispatcher.prototype.import`
