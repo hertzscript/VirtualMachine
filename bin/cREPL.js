@@ -117,6 +117,7 @@ const logTextBuffer = new term.TextBuffer({
 	wrap: true
 });
 function logDraw() {
+	term.terminal.saveCursor();
 	logTextBuffer.draw();
 	logScreenBuffer.draw();
 	term.terminal.restoreCursor();
@@ -159,8 +160,8 @@ term.terminal.on("key", (name, data) => {
 		if (exiting) exit();
 		exiting = true;
 		logText("(To exit, press ^C again or type .exit)\n");
-	} else if (name === "CTRL_S") {
-
+	} else if (name === "CTRL_P") {
+		paused ? startExec() : pauseExec();
 	} else if (name === "PAGE_DOWN") {
 		logScroll(1);
 		drawStats();
@@ -176,11 +177,10 @@ function drawCapture() {
 	for (var str of cBuffer) {
 		if (str === "\x1b[0J") {
 			clearLogText();
-			drawStats();
 		} else {
 			logText(str.replace(ansiRegexp, ""));
-			drawStats();
 		}
+		drawStats();
 	}
 	cConsole.clearCaptureText();
 }
@@ -192,62 +192,74 @@ logText("Loaded hertzscript-dispatcher v0.0.1\n\
 Welcome to the concurrent HertzScript-Velocity REPL!\n\
 Press PageUp/PageDown to scroll.\n\
 ");
-const asyncRunner = () => {
+var paused = false;
+function pauseExec() {
+	paused = true;
+}
+function startExec() {
+	paused = false;
+	hzDisp.running = true;
+	setTimeout(execRunner, 5);
+	setTimeout(logRunner, 5);
+}
+const logRunner = () => {
+	drawCapture();
+	if (!paused) setTimeout(logRunner, 5);
+};
+const execRunner = () => {
 	cConsole.startCapture();
 	try {
-		hzDisp.runSync(30);
+		hzDisp.cycle(1);
 	} catch (error) {
 		console.error(error);
 		hzDisp = new Dispatcher();
 	}
 	cConsole.stopCapture();
-	drawCapture();
-	if (!hzDisp.running) return;
-	setTimeout(asyncRunner, 100);
+	if (hzDisp.running && !paused) setTimeout(execRunner, 5);
 };
-const inputHandler = () => {
-	term.terminal.inputField({
-		cancelable: true,
-		history: inputHistory,
-		cursorPosition: -1
-	}, (error, input) => {
-		if (error) throw error;
-		if (!(/\S/.test(input))) {
-			inputHandler();
-			term.terminal.restoreCursor();
-			return;
-		}
-		term.terminal.eraseLine();
-		if (input === ".exit") exit();
-		if (inputHistory[inputHistory.length - 1] !== input) inputHistory.push(input);
-		// Interrupt a prior 1x ^C
-		exiting = false;
+const inputHandler = (error, input) => {
+	if (error) throw error;
+	if (!(/\S/.test(input))) {
+		inputField();
 		term.terminal.restoreCursor();
-		process.stdout.write("⌛");
-		try {
-			const hzModule = new Function(
-				'exports',
-				'require',
-				'module',
-				'__filename',
-				'__dirname',
-				"return hzUserLib => { return " + hzCompile("(function (){" + input + "})", false, false, true) + "};"
-			);
-			hzDisp.import(hzModule(exports, require, module, __filename, __dirname));
-			if (!hzDisp.running) setTimeout(asyncRunner, 30);
-		} catch (error) {
-			cConsole.startCapture();
-			console.error(error);
-			cConsole.stopCapture();
-			drawCapture();
-		}
-		drawStats();
-		term.terminal.eraseLine();
-		term.terminal.restoreCursor();
-		term.terminal.left(2);
-		process.stdout.write("> ");
-		inputHandler();
-	});
+		return;
+	}
+	term.terminal.eraseLine();
+	if (input === ".exit") exit();
+	if (inputHistory[inputHistory.length - 1] !== input) inputHistory.push(input);
+	// Interrupt a prior 1x ^C
+	exiting = false;
+	process.stdout.write("⌛");
+	try {
+		const hzModule = new Function(
+			'exports',
+			'require',
+			'module',
+			'__filename',
+			'__dirname',
+			"return hzUserLib => { return " + hzCompile("(function (){" + input + "})", false, false, true) + "};"
+		);
+		hzDisp.import(hzModule(exports, require, module, __filename, __dirname));
+		if (!hzDisp.running && !paused) startExec();
+	} catch (error) {
+		cConsole.startCapture();
+		console.error(error);
+		cConsole.stopCapture();
+		drawCapture();
+	}
+	drawStats();
+	term.terminal.eraseLine();
+	term.terminal.left(input.length + 2);
+	process.stdout.write("> ");
+	inputField();
+};
+const fieldOptions = {
+	cancelable: true,
+	history: inputHistory,
+	cursorPosition: -1
+};
+const inputField = () => {
+	term.terminal.inputField(fieldOptions, inputHandler);
 };
 drawStats();
-inputHandler();
+inputField();
