@@ -1,11 +1,12 @@
 // Process Control Block
 // Wraps a Function or GeneratorFunction, and stores metadata about it
-function HzFunctor(tokenLib, functor, thisArg = null, args = []) {
+function HzFunctor(tokenLib, functor, thisArg = null, args = [], isTailCall = false) {
 	this.tokenLib = tokenLib;
 	this.image = functor;
 	this.thisArg = thisArg;
 	this.args = args === null ? [] : args;
-	this.instance = null
+	this.instance = null;
+	this.isTailCall = isTailCall;
 	if (this.tokenLib.symbols.conSym in functor) this.type = "constructor";
 	else if (this.tokenLib.symbols.subSym in functor) this.type = "subroutine";
 	else if (this.tokenLib.symbols.genSym in functor) this.type = "generator";

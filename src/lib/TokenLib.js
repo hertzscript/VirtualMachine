@@ -14,20 +14,24 @@ function TokenLib() {
 		// Type 1: Invocation Tokens,
 		//	Wrap userland functors and any operands needed to invoke them.
 		call: new HzToken("call",
-			"functor"
+			"functor",
+			"isTailCall"
 		),
 		callArgs: new HzToken("callArgs",
 			"functor",
-			"args"
+			"args",
+			"isTailCall"
 		),
 		callMethod: new HzToken("callMethod",
 			"object",
-			"property"
+			"property",
+			"isTailCall"
 		),
 		callMethodArgs: new HzToken("callMethodArgs",
 			"object",
 			"property",
-			"args"
+			"args",
+			"isTailCall"
 		),
 		new: new HzToken("new",
 			"functor"

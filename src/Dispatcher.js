@@ -20,6 +20,7 @@ function Dispatcher(tokenLib = null, quantum = 300) {
 	this.running = false;
 	// The ControlBlock queue
 	this.queue = new RunQueue();
+	this.curFunctor = null;
 	this.lastError = undefined;
 	this.lastReturn = undefined;
 	this.metrics = {
@@ -34,9 +35,9 @@ Dispatcher.prototype.isKernelized = function (input) {
 	return ((typeof input) === "object") && (this.tokenLib.symbols.kernSym in input);
 };
 // Add a hzFunctor to the active ControlBlock, or create a new ControlBlock for it
-Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null) {
+Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null, isTailCall = false) {
 	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
-	this.queue.enqueue(new HzFunctor(this.tokenLib, functor, thisArg, args));
+	this.queue.enqueue(new HzFunctor(this.tokenLib, functor, thisArg, args, isTailCall));
 };
 // Add a hzFunctor to a new ControlBlock
 Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
@@ -69,13 +70,23 @@ Dispatcher.prototype.processToken = function (token) {
 	} else if (token.type === "yieldValue") {
 		this.queue.activeBlock.popFunctor();
 		this.queue.activeBlock.lastReturn = token.arg;
-	} else if (token.type === "return") this.queue.killLast();
-	else if (token.type === "yield") this.queue.activeBlock.popFunctor();
-	else if (token.type === "call") this.enqueue(token.functor);
-	else if (token.type === "callArgs") this.enqueue(token.functor, null, token.args);
-	else if (token.type === "callMethod") this.enqueue(token.object[token.property], token.object, null);
-	else if (token.type === "callMethodArgs") this.enqueue(token.object[token.property], token.object, token.args);
-	else if (token.type === "new") {
+	} else if (token.type === "return") {
+		this.queue.killLast();
+	} else if (token.type === "yield") {
+		this.queue.activeBlock.popFunctor();
+	} else if (token.type === "call") {
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		this.enqueue(token.functor, null, null, token.isTailCall);
+	} else if (token.type === "callArgs") {
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		this.enqueue(token.functor, null, token.args, token.isTailCall);
+	} else if (token.type === "callMethod") {
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		this.enqueue(token.object[token.property], token.object, null, token.isTailCall);
+	} else if (token.type === "callMethodArgs") {
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		this.enqueue(token.object[token.property], token.object, token.args, token.isTailCall);
+	} else if (token.type === "new") {
 		token.functor[this.tokenLib.symbols.conSym] = true;
 		this.enqueue(token.functor, Object.create(token.functor.prototype));
 	} else if (token.type === "newArgs") {
@@ -87,11 +98,17 @@ Dispatcher.prototype.processToken = function (token) {
 	} else if (token.type === "newMethodArgs") {
 		token.object[token.property][this.tokenLib.symbols.conSym] = true;
 		this.enqueue(token.object[token.property], Object.create(token.object[token.property].prototype), token.args);
-	} else if (token.type === "spawn") this.spawn(token.functor);
-	else if (token.type === "spawnArgs") this.spawn(token.functor, null, token.args);
-	else if (token.type === "spawnMethod") this.spawn(token.object[token.property], token.object);
-	else if (token.type === "spawnMethodArgs") this.spawn(token.object[token.property], token.object, token.args);
-	else throw new TypeError("Illegal Instruction Kernel \"" + token.type + "\"");
+	} else if (token.type === "spawn") {
+		this.spawn(token.functor);
+	} else if (token.type === "spawnArgs") {
+		this.spawn(token.functor, null, token.args);
+	} else if (token.type === "spawnMethod") {
+		this.spawn(token.object[token.property], token.object);
+	} else if (token.type === "spawnMethodArgs") {
+		this.spawn(token.object[token.property], token.object, token.args);
+	} else {
+		throw new TypeError("Illegal Instruction Kernel \"" + token.type + "\"");
+	}
 };
 // Runs a single execution cycle
 Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
@@ -106,6 +123,7 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 			return this.lastReturn;
 		}
 		const block = this.queue.getNext();
+		console.log("Functions in stack: " + block.stack.length);
 		if (block === null) {
 			this.stop();
 			return this.lastReturn;
@@ -113,6 +131,7 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 		// Advance execution of the last Functor in the virtual stack
 		try {
 			const hzFunctor = block.getCurrent();
+			this.curFunctor = hzFunctor;
 			// Advances execution of the hzFunctor and saves the yielded state
 			if (block.lastError !== null) {
 				// Uncaught error was seen before, so throw it into the hzFunctor
