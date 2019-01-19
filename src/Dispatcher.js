@@ -75,16 +75,16 @@ Dispatcher.prototype.processToken = function (token) {
 	} else if (token.type === "yield") {
 		this.queue.activeBlock.popFunctor();
 	} else if (token.type === "call") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
 		this.enqueue(token.functor, null, null, token.isTailCall);
 	} else if (token.type === "callArgs") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
 		this.enqueue(token.functor, null, token.args, token.isTailCall);
 	} else if (token.type === "callMethod") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
 		this.enqueue(token.object[token.property], token.object, null, token.isTailCall);
 	} else if (token.type === "callMethodArgs") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.activeBlock.stack.pop().returnFromFunctor();
+		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
 		this.enqueue(token.object[token.property], token.object, token.args, token.isTailCall);
 	} else if (token.type === "new") {
 		token.functor[this.tokenLib.symbols.conSym] = true;

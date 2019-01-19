@@ -45,9 +45,12 @@ RunQueue.prototype.removeCurrent = function() {
 	this.blockIndex--;
 	this.activeBlock = this.blockIndex < 0 ? null : this.blocks[this.blockIndex];
 };
+RunQueue.prototype.returnFromLast = function() {
+	this.activeBlock.killLast();
+};
 RunQueue.prototype.killLast = function() {
 	if (this.activeBlock === null) return;
-	this.activeBlock.killLast();
+	this.returnFromLast();
 	if (this.activeBlock.stack.length === 0) this.removeCurrent();
 };
 RunQueue.prototype.killAll = function() {
