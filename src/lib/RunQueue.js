@@ -29,7 +29,7 @@ RunQueue.prototype.getNext = function () {
 RunQueue.prototype.enqueue = function (hzFunctor) {
 	if (this.blocks.length === 0) {
 		const block = new ControlBlock();
-		block.pushFunctor(hzFUnctor);
+		block.pushFunctor(hzFunctor);
 		this.blocks.push(block);
 	} else {
 		this.activeBlock.pushFunctor(hzFunctor);
@@ -46,6 +46,7 @@ RunQueue.prototype.removeCurrent = function() {
 	this.activeBlock = this.blockIndex < 0 ? null : this.blocks[this.blockIndex];
 };
 RunQueue.prototype.killLast = function() {
+	if (this.activeBlock === null) return;
 	this.activeBlock.killLast();
 	if (this.activeBlock.stack.length === 0) this.removeCurrent();
 };
