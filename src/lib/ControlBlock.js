@@ -15,4 +15,20 @@ function ControlBlock() {
 		makespan: 0
 	};
 }
+ControlBlock.prototype.pushFunctor = function(hzFunctor) {
+	this.stack.push(hzFunctor);
+};
+ControlBlock.prototype.popFunctor = function() {
+	this.stack.pop();
+};
+ControlBlock.prototype.getCurrent = function() {
+	if (this.stack.length === 0) return null;
+	return this.stack[this.stack.length - 1];
+};
+ControlBlock.prototype.killLast = function() {
+	this.stack.pop().returnFromFunctor();
+};
+ControlBlock.prototype.killAll = function() {
+	while (this.stack.length >= 0) this.killLast();
+};
 module.exports = ControlBlock;

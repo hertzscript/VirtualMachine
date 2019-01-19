@@ -29,28 +29,28 @@ RunQueue.prototype.getNext = function () {
 RunQueue.prototype.enqueue = function (hzFunctor) {
 	if (this.blocks.length === 0) {
 		const block = new ControlBlock();
-		block.stack.push(hzFUnctor);
+		block.pushFunctor(hzFUnctor);
 		this.blocks.push(block);
 	} else {
-		this.activeBlock.stack.push(hzFunctor);
+		this.activeBlock.pushFunctor(hzFunctor);
 	}
 };
 RunQueue.prototype.spawn = function (hzFunctor) {
 	const block = new ControlBlock();
-	block.stack.push(hzFunctor);
+	block.pushFunctor(hzFunctor);
 	this.blocks.push(block);
 };
-RunQueue.prototype.killLast = function() {
-	if (this.activeBlock.stack.length > 0) this.activeBlock.stack.pop().returnFromFunctor();
-	if (this.activeBlock.stack.length === 0) {
-		this.blocks.splice(this.blockIndex, 1);
-		this.blockIndex--;
-		this.activeBlock = this.blockIndex < 0 ? null : this.blocks[this.blockIndex];
-	}
-};
-RunQueue.prototype.killAll = function() {
-	while (this.activeBlock.stack.length >= 0) this.killLast();
+RunQueue.prototype.removeCurrent = function() {
 	this.blocks.splice(this.blockIndex, 1);
 	this.blockIndex--;
+	this.activeBlock = this.blockIndex < 0 ? null : this.blocks[this.blockIndex];
+};
+RunQueue.prototype.killLast = function() {
+	this.activeBlock.killLast();
+	if (this.activeBlock.stack.length === 0) this.removeCurrent();
+};
+RunQueue.prototype.killAll = function() {
+	this.activeBlock.killAll();
+	this.removeCurrent();
 };
 module.exports = RunQueue;

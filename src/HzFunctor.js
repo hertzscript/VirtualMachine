@@ -1,8 +1,7 @@
 // Process Control Block
 // Wraps a Function or GeneratorFunction, and stores metadata about it
-function HzFunctor(debugLog, tokenLib, functor, thisArg = null, args = []) {
+function HzFunctor(tokenLib, functor, thisArg = null, args = []) {
 	this.tokenLib = tokenLib;
-	this.debugLog = debugLog;
 	this.image = functor;
 	this.thisArg = thisArg;
 	this.args = args === null ? [] : args;
@@ -14,18 +13,8 @@ function HzFunctor(debugLog, tokenLib, functor, thisArg = null, args = []) {
 	else if (this.tokenLib.symbols.crtSym in functor) this.type = "coroutine";
 	else this.type = "unknown";
 }
-HzFunctor.prototype.log = function () {
-	this.debugLog(`Functor Details:
-	Type: ${this.type},
-	Image: ${this.tokenLib.symbols.tokenSym in this.image ? this.image[this.tokenLib.symbols.tokenSym].toString() : this.image.toString()},
-	Args: ${this.args.length > 0 ? this.args.join() : "none"}
-	ThisArg: ${this.thisArg}
-	`);
-};
 // Functor interaction
 HzFunctor.prototype.initFunctor = function (thisArg = null, args = []) {
-	this.debugLog("Functor Initializing:");
-	this.log();
 	if (thisArg === null && this.thisArg !== null) thisArg = this.thisArg;
 	if (args.length === 0 && this.args.length !== 0) args = this.args;
 	if (this.type !== "unknown" && this.tokenLib.symbols.tokenSym in this.image) {

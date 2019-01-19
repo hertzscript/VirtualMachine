@@ -4,26 +4,14 @@ const TokenLib = require("./lib/TokenLib.js");
 const DetourLib = require("./lib/DetourLib.js");
 const UserLib = require("./lib/UserLib.js");
 const RunQueue = require("./lib/RunQueue.js");
-const debug = false;
-if (debug) require("console-buffer")(4096);
-function debugLog(str) {
-	if (debug) console.log(str);
-}
-function debugTable(obj) {
-	if (debug) console.table(obj);
-}
-function debugError(error) {
-	if (debug) console.error(error);
-}
-function Dispatcher(tokenLib = null, quantum = 300000000) {
+const bufferConsole = false;
+if (bufferConsole) require("console-buffer")(4096);
+function Dispatcher(tokenLib = null, quantum = 300) {
 	// Instruction Token Library
-	if (tokenLib !== null) {
-		this.tokenLib = tokenLib;
-	} else {
-		this.tokenLib = new TokenLib();
-	}
+	if (tokenLib !== null) this.tokenLib = tokenLib;
+	else this.tokenLib = new TokenLib();
 	// Functor detour library
-	this.detourLib = new DetourLib(Dispatcher, this.tokenLib, debugLog);
+	this.detourLib = new DetourLib(Dispatcher, this.tokenLib);
 	// Userland Library
 	this.userLib = new UserLib(this.tokenLib, this.detourLib);
 	// Default time-slice length per cycle()
@@ -47,18 +35,13 @@ Dispatcher.prototype.isKernelized = function (input) {
 };
 // Add a hzFunctor to the active ControlBlock, or create a new ControlBlock for it
 Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null) {
-	debugLog("Enqueuing Functor:");
-	debugLog(functor);
-	debugLog(Object.keys(functor).join());
-	this.queue.enqueue(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
+	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
+	this.queue.enqueue(new HzFunctor(this.tokenLib, functor, thisArg, args));
 };
 // Add a hzFunctor to a new ControlBlock
 Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
 	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
-	debugLog("Spawning Functor in new ControlBlock:");
-	debugLog(functor);
-	debugLog(Object.keys(functor).join());
-	this.queue.spawn(new HzFunctor(debugLog, this.tokenLib, functor, thisArg, args));
+	this.queue.spawn(new HzFunctor(this.tokenLib, functor, thisArg, args));
 };
 Dispatcher.prototype.import = function (hzModule) {
 	this.spawn(hzModule(this.userLib));
@@ -70,28 +53,24 @@ Dispatcher.prototype.exec = function (functor, thisArg = null, args = null) {
 };
 // Pop and terminate a Functor from the stack
 Dispatcher.prototype.killLast = function () {
-	debugLog("Killing last Functor in the ControlBlock");
 	this.queue.killLast();
 };
 // Pop and terminate all Functors in the stack
 Dispatcher.prototype.killAll = function () {
-	debugLog("Killing all Functors in the ControlBlock");
 	this.queue.killAll();
 };
 // Processes a kernelized instruction
-Dispatcher.prototype.processState = function (token) {
-	debugLog("Processing Token \"" + token.type + "\"");
-	debugLog(token);
+Dispatcher.prototype.processToken = function (token) {
 	// Interprets an instruction token into stack operations
 	if (token.type === "loopYield") return;
 	if (token.type === "returnValue") {
 		this.queue.killLast();
 		this.queue.activeBlock.lastReturn = token.arg;
 	} else if (token.type === "yieldValue") {
-		this.queue.activeBlock.stack.pop();
+		this.queue.activeBlock.popFunctor();
 		this.queue.activeBlock.lastReturn = token.arg;
 	} else if (token.type === "return") this.queue.killLast();
-	else if (token.type === "yield") this.queue.activeBlock.stack.pop();
+	else if (token.type === "yield") this.queue.activeBlock.popFunctor();
 	else if (token.type === "call") this.enqueue(token.functor);
 	else if (token.type === "callArgs") this.enqueue(token.functor, null, token.args);
 	else if (token.type === "callMethod") this.enqueue(token.object[token.property], token.object, null);
@@ -103,7 +82,6 @@ Dispatcher.prototype.processState = function (token) {
 		token.functor[this.tokenLib.symbols.conSym] = true;
 		this.enqueue(token.functor, Object.create(token.functor.prototype), token.args);
 	} else if (token.type === "newMethod") {
-		debugLog(token);
 		token.object[token.property][this.tokenLib.symbols.conSym] = true;
 		this.enqueue(token.object[token.property], Object.create(token.object[token.property].prototype));
 	} else if (token.type === "newMethodArgs") {
@@ -117,19 +95,12 @@ Dispatcher.prototype.processState = function (token) {
 };
 // Runs a single execution cycle
 Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
-	debugLog("Cycle Invoked");
 	const complete = quantum === false;
-	if (complete) debugLog("Starting Dispatcher in run-to-completion mode...");
 	if (quantum === null) quantum = this.quantum;
 	const qEnd = performance.now() + quantum;
 	cycle: while (complete || performance.now() < qEnd) {
 		const cStart = performance.now();
-		debugLog("Cycling Dispatcher...");
-		debugLog("Current Metrics:");
-		debugLog(this.metrics);
 		if (!this.running || this.queue.blocks.length === 0) {
-			!this.running ? debugLog("Stopping Dispatcher because the Stop signal was received...\n")
-				: debugLog("Stopping Dispatcher because all ControlBlock Stacks are empty...\n");
 			// Dispatcher is not running, or ControlBlock stack is empty, so abort
 			this.stop();
 			return this.lastReturn;
@@ -139,18 +110,11 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 			this.stop();
 			return this.lastReturn;
 		}
-		debugLog("\n\x1b[32mControlBlock " + this.queue.blockIndex + " loaded\x1b[0m");
-		debugLog("Stack Snapshot:");
-		debugTable(block.stack);
 		// Advance execution of the last Functor in the virtual stack
 		try {
-			const hzFunctor = block.stack[block.stack.length - 1];
-			debugLog("Dispatching hzFunctor:");
-			hzFunctor.log();
-			if (block.lastReturn !== null) (debugLog("With value:"), debugLog(block.lastReturn));
+			const hzFunctor = block.getCurrent();
 			// Advances execution of the hzFunctor and saves the yielded state
 			if (block.lastError !== null) {
-				debugLog("Throwing Error into hzFunctor...");
 				// Uncaught error was seen before, so throw it into the hzFunctor
 				var state = hzFunctor.throwIntoFunctor(block.lastError);
 				block.lastError = null;
@@ -160,8 +124,6 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 				block.lastReturn = null;
 			}
 			// Return the yielded state of the hzFunctor
-			debugLog("hzFunctor yielded State:");
-			debugLog(state);
 			if (hzFunctor.type === "iterator") hzFunctor.args = [];
 			if (hzFunctor.type === "generator") {
 				state = this.detourLib.hookIterator(state);
@@ -183,22 +145,18 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 				}
 			}
 			// Collect resultant state and process any instructions
-			this.processState(state);
+			this.processToken(state);
 			this.lastReturn = block.lastReturn;
 		} catch (error) {
-			debugLog("Uncaught Error was thrown! Terminating end of stack...");
-			debugError(error);
 			// Uncaught error, so end the hzFunctor
 			this.queue.killLast();
 			block.lastError = error;
 			this.lastError = error;
 			if (block.stack.length === 0) {
 				if (throwUp) {
-					debugLog("Stopping Dispatcher due to an uncaught error...\n");
 					this.stop();
 					throw error;
 				} else {
-					debugLog("Killing current ControlBlock due to an uncaught error...\n");
 					console.error(error);
 				}
 			}
@@ -216,14 +174,12 @@ Dispatcher.prototype.runComplete = function (throwUp = false) {
 	return this.runSync(false, throwUp);
 };
 Dispatcher.prototype.runSync = function (quantum = null, throwUp = false) {
-	debugLog("Beginning synchronous execution...");
 	this.running = true;
 	return this.cycle(quantum, throwUp);
 	if (!this.running) return this.lastReturn;
 };
 Dispatcher.prototype.runAsync = function (interval = 30, quantum = null, throwUp = false) {
 	if (this.running) return;
-	debugLog("Beginning asynchronous execution...");
 	return new Promise((resolve) => {
 		const asyncRunner = () => {
 			this.runSync(quantum, throwUp);
