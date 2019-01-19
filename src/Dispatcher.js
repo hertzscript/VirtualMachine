@@ -123,7 +123,6 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 			return this.lastReturn;
 		}
 		const block = this.queue.getNext();
-		console.log("Functions in stack: " + block.stack.length);
 		if (block === null) {
 			this.stop();
 			return this.lastReturn;
