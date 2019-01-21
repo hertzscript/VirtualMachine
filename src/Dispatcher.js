@@ -1,5 +1,5 @@
 const performance = require('perf_hooks').performance;
-const HzFunctor = require("./HzFunctor.js");
+const HzFunctor = require("./lib/HzFunctor.js");
 const TokenLib = require("./lib/TokenLib.js");
 const DetourLib = require("./lib/DetourLib.js");
 const UserLib = require("./lib/UserLib.js");
