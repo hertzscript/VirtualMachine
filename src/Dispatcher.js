@@ -44,9 +44,11 @@ Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
 	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
 	this.queue.spawn(new HzFunctor(this.tokenLib, functor, thisArg, args));
 };
+// Imports an HzModule
 Dispatcher.prototype.import = function (hzModule) {
 	this.spawn(hzModule(this.userLib));
 };
+// Imports an HzFunctor or HzModule and executes it in run-to-completion mode
 Dispatcher.prototype.exec = function (functor, thisArg = null, args = null) {
 	if (this.tokenLib.symbols.tokenSym in functor) this.spawn(functor, thisArgs, args);
 	else this.import(functor);
@@ -118,12 +120,13 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 	cycle: while (complete || performance.now() < qEnd) {
 		const cStart = performance.now();
 		if (!this.running || this.queue.blocks.length === 0) {
-			// Dispatcher is not running, or ControlBlock stack is empty, so abort
+			// Dispatcher is not running or there are no ControlBlocks
 			this.stop();
 			return this.lastReturn;
 		}
 		const block = this.queue.getNext();
 		if (block === null) {
+			// No runnable ControlBlocks
 			this.stop();
 			return this.lastReturn;
 		}
@@ -141,7 +144,7 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 				var state = block.lastReturn !== null ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
 				block.lastReturn = null;
 			}
-			// Return the yielded state of the hzFunctor
+			// Process the yielded state of the hzFunctor
 			if (hzFunctor.type === "iterator") hzFunctor.args = [];
 			if (hzFunctor.type === "generator") {
 				state = this.detourLib.hookIterator(state);
@@ -162,7 +165,7 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 					state = this.tokenLib.returnValue.set([hzFunctor.thisArg]);
 				}
 			}
-			// Collect resultant state and process any instructions
+			// Process an HzToken
 			this.processToken(state);
 			this.lastReturn = block.lastReturn;
 		} catch (error) {
@@ -188,14 +191,23 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 	}
 	return this.lastReturn;
 };
-Dispatcher.prototype.runComplete = function (throwUp = false) {
-	return this.runSync(false, throwUp);
+// Customize and extend the RunQueue
+Dispatcher.prototype.extendQueue = function(optObj) {
+	if (typeof optObj !== "function")
+	throw new TypeError("setPolicy expects type \"function\" but type \"" + typeof optObj + "\" was given.");
+	if ("extend" in optObj) obtObj.extend.call(this.queue);
 };
+// Synchronous mode, runs for the duration of the quantum in milliseconds
 Dispatcher.prototype.runSync = function (quantum = null, throwUp = false) {
 	this.running = true;
 	return this.cycle(quantum, throwUp);
 	if (!this.running) return this.lastReturn;
 };
+// Run-to-completion mode, runs runSync continuously until all programs have exited
+Dispatcher.prototype.runComplete = function (throwUp = false) {
+	return this.runSync(false, throwUp);
+};
+// Asynchronous mode, runs runSync on an interval in the asynchrnous event loop
 Dispatcher.prototype.runAsync = function (interval = 30, quantum = null, throwUp = false) {
 	if (this.running) return;
 	return new Promise((resolve) => {
@@ -207,6 +219,7 @@ Dispatcher.prototype.runAsync = function (interval = 30, quantum = null, throwUp
 		setTimeout(asyncRunner, interval);
 	});
 };
+// Stops execution
 Dispatcher.prototype.stop = function () {
 	this.queue.blockIndex = 0;
 	this.queue.activeBlock = null;
