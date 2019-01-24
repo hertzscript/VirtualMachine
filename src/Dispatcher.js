@@ -192,10 +192,8 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 	return this.lastReturn;
 };
 // Customize and extend the RunQueue
-Dispatcher.prototype.extendQueue = function(optObj) {
-	if (typeof optObj !== "function")
-	throw new TypeError("setPolicy expects type \"function\" but type \"" + typeof optObj + "\" was given.");
-	if ("extend" in optObj) obtObj.extend.call(this.queue);
+Dispatcher.prototype.extendQueue = function(extender) {
+	this.queue.extend(extender);
 };
 // Synchronous mode, runs for the duration of the quantum in milliseconds
 Dispatcher.prototype.runSync = function (quantum = null, throwUp = false) {

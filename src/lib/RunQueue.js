@@ -9,6 +9,11 @@ function RunQueue(quantum = 0) {
 	// The current active ControlBlock index
 	this.blockIndex = 0;
 }
+RunQueue.prototype.extend = function (extender) {
+	if (typeof extender !== "function")
+	throw new TypeError("setPolicy expects type \"function\" but type \"" + typeof extender + "\" was given.");
+	extender.call(this);
+};
 RunQueue.prototype.getNext = function () {
 	if (this.blocks.length === 0) return null;
 	if (
