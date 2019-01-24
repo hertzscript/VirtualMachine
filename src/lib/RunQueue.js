@@ -1,5 +1,7 @@
 const ControlBlock = require("./ControlBlock.js");
-function RunQueue() {
+function RunQueue(quantum = 0) {
+	// Milliseconds a ControlBlock is allowed to continuously run
+	this.quantum = quantum;
 	// The ControlBlock stack
 	this.blocks = [];
 	// The current active ControlBlock
@@ -9,10 +11,15 @@ function RunQueue() {
 }
 RunQueue.prototype.getNext = function () {
 	if (this.blocks.length === 0) return null;
+	if (
+		this.activeBlock !== null
+		&& this.activeBlock.metrics.makeflight < this.quantum
+	) {
+		return this.activeBlock;
+	}
 	var loc = this.blockIndex;
 	const start = loc;
-	while (true) {
-		if (loc === start + 1) break;
+	while (loc !== start + 1) {
 		loc++;
 		if (loc >= this.blocks.length || loc < 0) loc = 0;
 		if (this.blocks[loc].waiting) continue;
@@ -40,20 +47,20 @@ RunQueue.prototype.spawn = function (hzFunctor) {
 	block.pushFunctor(hzFunctor);
 	this.blocks.push(block);
 };
-RunQueue.prototype.removeCurrent = function() {
+RunQueue.prototype.removeCurrent = function () {
 	this.blocks.splice(this.blockIndex, 1);
 	this.blockIndex--;
 	this.activeBlock = this.blockIndex < 0 ? null : this.blocks[this.blockIndex];
 };
-RunQueue.prototype.returnFromLast = function() {
+RunQueue.prototype.returnFromLast = function () {
 	this.activeBlock.killLast();
 };
-RunQueue.prototype.killLast = function() {
+RunQueue.prototype.killLast = function () {
 	if (this.activeBlock === null) return;
 	this.returnFromLast();
 	if (this.activeBlock.stack.length === 0) this.removeCurrent();
 };
-RunQueue.prototype.killAll = function() {
+RunQueue.prototype.killAll = function () {
 	this.activeBlock.killAll();
 	this.removeCurrent();
 };
