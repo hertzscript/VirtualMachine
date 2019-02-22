@@ -17,7 +17,8 @@ if ("_unknown" in mainOptions) {
 		{ name: "input", alias: "i", type: String },
 		{ name: "source", alias: "s", type: String },
 		{ name: "compile", alias: "c", type: Boolean },
-		{ name: "spawn", type: Boolean }
+		{ name: "spawn", type: Boolean },
+		{ name: "async", alias: "a", type: Number }
 	];
 	args = cliParser(cliOptions, {argv});
 	if ("path" in mainOptions) args.input = mainOptions.path;
@@ -26,9 +27,10 @@ if (!("input" in args)) args.input = null;
 if (!("source" in args)) args.source = null;
 if (!("compile" in args)) args.compile = false;
 if (!("spawn" in args)) args.spawn = false;
+if (!("async" in args)) args.spawn = null;
 function execute(source) {
 	if (args.compile) console.log("Compiling with hertzscript-compiler.");
-	return hzExec(source, args.compile, args.spawn);
+	return hzExec(source, args.compile, args.spawn, args.async);
 }
 function inputSource(input, callback) {
 	fs.readFile(input, function (error, buffer) {
