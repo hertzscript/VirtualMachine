@@ -5,8 +5,9 @@ function DetourLib(Dispatcher, tokenLib) {
 }
 DetourLib.prototype.createDetour = function (functor) {
 	const tokenLib = this.tokenLib;
+	const Dispatcher = this.Dispatcher;
 	const hzFunctor = function (...argsArray) {
-		const hzDisp = new this.Dispatcher(tokenLib);
+		const hzDisp = new Dispatcher(tokenLib);
 		hzDisp.enqueue(hzFunctor, this, argsArray);
 		return hzDisp.runComplete();
 	};
