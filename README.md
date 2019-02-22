@@ -50,6 +50,10 @@ Execute source code with optional hot-compiling via `stdin`, argument, or file i
 
 - If set, this option specifies the tring which follows as the input JavaScript source code which you would like to execute. If this option is set to nothing, or is not set at all, then the source code is consumed via the standard input of the terminal.
 
+`-a` *quantum* (`--async`)
+
+- If set, this option specifies the time slice quantum of the dispatcher so that it cooperates with the built-in asynchronous event loop. The dispatcher will pause the running code when the duration of its execution reaches or exceeds the time slice, allowing the event loop to continue operating. 5 milliseconds after pausing, the dispatcher will resume execution until the time slice quantum is reached again.
+
 `-c` (`--compile`)
 
 - If set, then `hertzscript-compiler` will pre-process the input source code before it is executed. Useful for quick testing without having to manually compile to another file every time you want to execute the script.
