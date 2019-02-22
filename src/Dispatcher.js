@@ -66,8 +66,8 @@ Dispatcher.prototype.killAll = function () {
 // Processes a kernelized instruction
 Dispatcher.prototype.processToken = function (tokenLib, queue, block, hzFunctor, token) {
 	// Loop interruptor
-	if (token === tokenLib.loopYield) return;
-	if (token === tokenLib.returnValue) {
+	if (token === tokenLib.tokens.loopYield) return;
+	if (token === tokenLib.tokens.returnValue) {
 		// Return with argument
 		queue.killLast();
 		block.lastReturn = token.arg;
