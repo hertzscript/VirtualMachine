@@ -4,8 +4,12 @@ const Dispatcher = require("../src/Dispatcher.js");
 const hzCompile = require("hertzscript-compiler");
 const term = require("terminal-kit");
 const CaptureConsole = require("../src/lib/CaptureConsole.js");
+const vm = require("vm");
 const fs = require("fs");
 const os = require("os");
+const context = vm.createContext();
+context.console = console;
+context.global = global;
 const ansiRegexp = /[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-ntqry=><~]))/;
 if ("HZREPL_HISTORY_SIZE" in process.env) var historyLimit = Number(process.env.HZREPL_HISTORY_SIZE);
 else var historyLimit = 1000;
@@ -188,8 +192,7 @@ term.terminal.nextLine(2);
 process.stdout.write("> ");
 term.terminal.saveCursor();
 var hzDisp = new Dispatcher();
-logText("Loaded hertzscript-dispatcher v0.0.1\n\
-Welcome to the concurrent HertzScript-Velocity REPL!\n\
+logText("Welcome to the concurrent HertzScript Velocity REPL!\n\
 Press PageUp/PageDown to scroll.\n\
 ");
 var paused = false;
@@ -208,17 +211,13 @@ const logRunner = () => {
 };
 const execRunner = () => {
 	cConsole.startCapture();
-	try {
-		hzDisp.cycle(1);
-	} catch (error) {
-		console.error(error);
-		hzDisp = new Dispatcher();
-	}
+	hzDisp.cycle(1);
 	cConsole.stopCapture();
 	if (hzDisp.running && !paused) setTimeout(execRunner, 5);
 };
 const inputHandler = (error, input) => {
 	if (error) throw error;
+	logText("> " + input);
 	if (!(/\S/.test(input))) {
 		inputField();
 		term.terminal.restoreCursor();
@@ -231,6 +230,7 @@ const inputHandler = (error, input) => {
 	exiting = false;
 	process.stdout.write("⌛");
 	try {
+		/*
 		const hzModule = new Function(
 			'exports',
 			'require',
@@ -240,6 +240,9 @@ const inputHandler = (error, input) => {
 			"return hzUserLib => { return " + hzCompile("(function (){" + input + "})", false, false, true) + "};"
 		);
 		hzDisp.import(hzModule(exports, require, module, __filename, __dirname));
+		*/
+		const hzModule = new vm.Script("(hzUserLib => { return " + hzCompile("(function (){" + input + "})", false, false, true) + "});");
+		hzDisp.import(hzModule.runInContext(context));
 		if (!hzDisp.running && !paused) startExec();
 	} catch (error) {
 		cConsole.startCapture();
