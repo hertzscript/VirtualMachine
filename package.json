@@ -1,13 +1,13 @@
 {
 	"name": "hertzscript-dispatcher",
-	"version": "0.0.9",
+	"version": "0.0.10",
 	"description": "Executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
 	"keywords": [
 		"javascript",
 		"preemption",
 		"preemptive",
 		"preemptible",
-		"interruption",
+		"protothreads",
 		"green-threads",
 		"coroutines",
 		"coroutine",
