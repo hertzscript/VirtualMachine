@@ -1,5 +1,7 @@
 const ControlBlock = require("./ControlBlock.js");
-function RunQueue(quantum = 0) {
+// Round-Robin process scheduler
+function RunQueue(tokenLib, quantum = 0) {
+	this.tokenLib = tokenLib;
 	// Milliseconds a ControlBlock is allowed to continuously run
 	this.quantum = quantum;
 	// The ControlBlock stack
@@ -40,7 +42,7 @@ RunQueue.prototype.getNext = function () {
 };
 RunQueue.prototype.enqueue = function (hzFunctor) {
 	if (this.blocks.length === 0) {
-		const block = new ControlBlock();
+		const block = new ControlBlock(this.tokenLib);
 		block.pushFunctor(hzFunctor);
 		this.blocks.push(block);
 	} else {
@@ -48,7 +50,7 @@ RunQueue.prototype.enqueue = function (hzFunctor) {
 	}
 };
 RunQueue.prototype.spawn = function (hzFunctor) {
-	const block = new ControlBlock();
+	const block = new ControlBlock(this.tokenLib);
 	block.pushFunctor(hzFunctor);
 	this.blocks.push(block);
 };
