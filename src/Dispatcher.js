@@ -4,9 +4,7 @@ const TokenLib = require("./lib/TokenLib.js");
 const DetourLib = require("./lib/DetourLib.js");
 const UserLib = require("./lib/UserLib.js");
 const RunQueue = require("./lib/RunQueue.js");
-const bufferConsole = false;
-if (bufferConsole) require("console-buffer")(4096);
-function Dispatcher(tokenLib = null, quantum = 300) {
+function Dispatcher(tokenLib = null, cQuantum = 300, tQuantum = 0) {
 	// Instruction Token Library
 	if (tokenLib !== null) this.tokenLib = tokenLib;
 	else this.tokenLib = new TokenLib();
@@ -14,15 +12,14 @@ function Dispatcher(tokenLib = null, quantum = 300) {
 	this.detourLib = new DetourLib(Dispatcher, this.tokenLib);
 	// Userland Library
 	this.userLib = new UserLib(this.tokenLib, this.detourLib);
-	// Default time-slice length per cycle()
-	this.quantum = quantum;
+	// Default cycle time-slice length
+	this.cQuantum = cQuantum;
 	// Set to "true" when the Dispatcher is running
 	this.running = false;
 	// The ControlBlock queue
-	this.queue = new RunQueue();
-	this.curFunctor = null;
-	this.lastError = undefined;
-	this.lastReturn = undefined;
+	this.queue = new RunQueue(this.tokenLib, tQuantum);
+	this.lastError = this.tokenLib.symbols.nullSym;
+	this.lastReturn = this.tokenLib.symbols.nullSym;
 	this.metrics = {
 		// Last Cycle time
 		makeflight: 0,
@@ -30,19 +27,23 @@ function Dispatcher(tokenLib = null, quantum = 300) {
 		makespan: 0
 	};
 }
-// Returns true if a value is wrapped in a Kernelizer
-Dispatcher.prototype.isKernelized = function (input) {
-	return ((typeof input) === "object") && (this.tokenLib.symbols.kernSym in input);
+// Set the time slice quantum of the RunQueue
+Dispatcher.prototype.threadQuantum = function (tQuantum) {
+	this.queue.quantum = tQuantum;
+};
+// Set the time slice quantum of the Dispatcher cycle
+Dispatcher.prototype.cycleQuantum = function (cQuantum) {
+	this.cQuantum = cQuantum;
 };
 // Add a hzFunctor to the active ControlBlock, or create a new ControlBlock for it
 Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null, isTailCall = false) {
 	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
-	this.queue.enqueue(new HzFunctor(this.tokenLib, functor, thisArg, args, isTailCall));
+	this.queue.enqueue(new HzFunctor(this.tokenLib.symbols, functor, thisArg, args, isTailCall));
 };
 // Add a hzFunctor to a new ControlBlock
 Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
 	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
-	this.queue.spawn(new HzFunctor(this.tokenLib, functor, thisArg, args));
+	this.queue.spawn(new HzFunctor(this.tokenLib.symbols, functor, thisArg, args));
 };
 // Imports an HzModule
 Dispatcher.prototype.import = function (hzModule) {
@@ -63,123 +64,154 @@ Dispatcher.prototype.killAll = function () {
 	this.queue.killAll();
 };
 // Processes a kernelized instruction
-Dispatcher.prototype.processToken = function (token) {
-	// Interprets an instruction token into stack operations
-	if (token.type === "loopYield") return;
-	if (token.type === "returnValue") {
-		this.queue.killLast();
-		this.queue.activeBlock.lastReturn = token.arg;
-	} else if (token.type === "yieldValue") {
-		this.queue.activeBlock.popFunctor();
-		this.queue.activeBlock.lastReturn = token.arg;
-	} else if (token.type === "return") {
-		this.queue.killLast();
-	} else if (token.type === "yield") {
-		this.queue.activeBlock.popFunctor();
-	} else if (token.type === "call") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
-		this.enqueue(token.functor, null, null, token.isTailCall);
-	} else if (token.type === "callArgs") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
-		this.enqueue(token.functor, null, token.args, token.isTailCall);
-	} else if (token.type === "callMethod") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
-		this.enqueue(token.object[token.property], token.object, null, token.isTailCall);
-	} else if (token.type === "callMethodArgs") {
-		if (token.isTailCall && this.curFunctor.isTailCall) this.queue.returnFromLast();
-		this.enqueue(token.object[token.property], token.object, token.args, token.isTailCall);
-	} else if (token.type === "new") {
-		token.functor[this.tokenLib.symbols.conSym] = true;
-		this.enqueue(token.functor, Object.create(token.functor.prototype));
-	} else if (token.type === "newArgs") {
-		token.functor[this.tokenLib.symbols.conSym] = true;
-		this.enqueue(token.functor, Object.create(token.functor.prototype), token.args);
-	} else if (token.type === "newMethod") {
-		token.object[token.property][this.tokenLib.symbols.conSym] = true;
-		this.enqueue(token.object[token.property], Object.create(token.object[token.property].prototype));
-	} else if (token.type === "newMethodArgs") {
-		token.object[token.property][this.tokenLib.symbols.conSym] = true;
-		this.enqueue(token.object[token.property], Object.create(token.object[token.property].prototype), token.args);
-	} else if (token.type === "spawn") {
-		this.spawn(token.functor);
-	} else if (token.type === "spawnArgs") {
-		this.spawn(token.functor, null, token.args);
-	} else if (token.type === "spawnMethod") {
-		this.spawn(token.object[token.property], token.object);
-	} else if (token.type === "spawnMethodArgs") {
-		this.spawn(token.object[token.property], token.object, token.args);
+Dispatcher.prototype.processToken = function (tokenLib, queue, block, hzFunctor, token) {
+	// Loop interruptor
+	if (token === tokenLib.loopYield) return;
+	if (token === tokenLib.returnValue) {
+		// Return with argument
+		queue.killLast();
+		block.lastReturn = token.arg;
+	} else if (token === tokenLib.tokens.yieldValue) {
+		// Yield with argument
+		block.popFunctor();
+		block.lastReturn = token.arg;
+	} else if (token === tokenLib.tokens.return) {
+		// Return without argument
+		queue.killLast();
+		block.lastReturn = undefined;
+	} else if (token === tokenLib.tokens.yield) {
+		// Yield without argument
+		block.popFunctor();
+		block.lastReturn = token.arg;
+	} else if (token === tokenLib.tokens.call) {
+		// Function call without arguments
+		if (token.isTailCall && hzFunctor.isTailCall) block.killLast();
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.functor, null, null, token.isTailCall));
+	} else if (token === tokenLib.tokens.callArgs) {
+		// Function call with arguments
+		if (token.isTailCall && hzFunctor.isTailCall) block.killLast();
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.functor, null, token.args, token.isTailCall));
+	} else if (token === tokenLib.tokens.callMethod) {
+		// Method call without arguments
+		if (token.isTailCall && hzFunctor.isTailCall) block.killLast();
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.object[token.property], token.object, null, token.isTailCall));
+	} else if (token === tokenLib.tokens.callMethodArgs) {
+		// Method call with arguments
+		if (token.isTailCall && hzFunctor.isTailCall) block.killLast();
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.object[token.property], token.object, token.args, token.isTailCall));
+	} else if (token === tokenLib.tokens.new) {
+		// NewExpression without arguments
+		token.functor[tokenLib.symbols.conSym] = true;
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.functor, Object.create(token.functor.prototype)));
+	} else if (token === tokenLib.tokens.newArgs) {
+		// NewExpression with arguments
+		token.functor[tokenLib.symbols.conSym] = true;
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.functor, Object.create(token.functor.prototype), token.args));
+	} else if (token === tokenLib.tokens.newMethod) {
+		// NewExpression from method without arguments
+		token.object[token.property][tokenLib.symbols.conSym] = true;
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.object[token.property], Object.create(token.object[token.property].prototype)));
+	} else if (token === tokenLib.tokens.newMethodArgs) {
+		// NewExpression from method with arguments
+		token.object[token.property][tokenLib.symbols.conSym] = true;
+		queue.enqueue(new HzFunctor(tokenLib.symbols, token.object[token.property], Object.create(token.object[token.property].prototype), token.args));
+	} else if (token === tokenLib.tokens.spawn) {
+		// SpawnExpression without arguments
+		queue.spawn(new HzFunctor(tokenLib.symbols, token.functor));
+	} else if (token === tokenLib.tokens.spawnArgs) {
+		// SpawnExpression with arguments
+		queue.spawn(new HzFunctor(tokenLib.symbols, token.functor, null, token.args));
+	} else if (token === tokenLib.tokens.spawnMethod) {
+		// SpawnExpression from method without arguments
+		queue.spawn(new HzFunctor(tokenLib.symbols, token.object[token.property], token.object));
+	} else if (token === tokenLib.tokens.spawnMethodArgs) {
+		// SpawnExpression from method with arguments
+		queue.spawn(new HzFunctor(tokenLib.symbols, token.object[token.property], token.object, token.args));
 	} else {
 		throw new TypeError("Illegal Instruction Kernel \"" + token.type + "\"");
 	}
 };
+Dispatcher.processToken = Dispatcher.prototype.processToken;
+// Prepare the yielded state of an hzFunctor for processState
+Dispatcher.prototype.coerceState = function (tokenLib, detourLib, hzFunctor, state) {
+	if (hzFunctor.type === "iterator") hzFunctor.args = [];
+	if (hzFunctor.type === "generator") {
+		state = detourLib.hookIterator(state);
+	} else if (hzFunctor.type === "unknown") {
+		if ((typeof state) === "undefined") state = tokenLib.tokens.return;
+		else state = tokenLib.tokens.returnValue.set([state]);
+	} else {
+		if (!(tokenLib.symbols.tokenSym in hzFunctor.image)) {
+			state = tokenLib.tokens.returnValue.set([state]);
+		} else if (!tokenLib.isKernelized(state.value)) {
+			if ((typeof state.value) === "undefined") state = tokenLib.tokens.return;
+			else state = tokenLib.tokens.returnValue.set([state.value]);
+		} else {
+			state = state.value;
+		}
+	}
+	if (hzFunctor.type === "constructor" && (
+		state === tokenLib.tokens.return
+		|| (state === tokenLib.tokens.returnValue && (typeof state.arg) === "undefined")
+	)) {
+		state = tokenLib.tokens.returnValue.set([hzFunctor.thisArg]);
+	}
+	return state;
+};
+Dispatcher.coerceState = Dispatcher.prototype.coerceState;
+Dispatcher.prototype.dispatch = function (tokenLib, detourLib, queue, block, throwUp) {
+	const hzFunctor = block.getCurrent();
+	try {
+		// Advances execution of the hzFunctor and saves the yielded state
+		if (block.lastError !== tokenLib.symbols.nullSym) {
+			// Uncaught error was seen before, so throw it into the hzFunctor
+			var state = hzFunctor.throwIntoFunctor(block.lastError);
+			block.lastError = tokenLib.symbols.nullSym;
+		} else {
+			// A value was returned or yielded before, so invoke the hzFunctor with it
+			var state = block.lastReturn !== tokenLib.symbols.nullSym ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
+			block.lastReturn = tokenLib.symbols.nullSym;
+		}
+		// Process an HzToken
+		Dispatcher.processToken(tokenLib, queue, block, hzFunctor, Dispatcher.coerceState(tokenLib, detourLib, hzFunctor, state));
+	} catch (error) {
+		// Uncaught error, so terminate the hzFunctor
+		console.error(error);
+		queue.killLast();
+		block.lastError = error;
+		if (block.stack.length === 0 && throwUp) if (throwUp) throw error;
+	}
+};
+Dispatcher.dispatch = Dispatcher.prototype.dispatch;
 // Runs a single execution cycle
-Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
-	const complete = quantum === false;
-	if (quantum === null) quantum = this.quantum;
-	const qEnd = performance.now() + quantum;
-	cycle: while (complete || performance.now() < qEnd) {
+Dispatcher.prototype.cycle = function (cQuantum = null, throwUp = false) {
+	const complete = cQuantum === false;
+	if (cQuantum === null) cQuantum = this.cQuantum;
+	const cEnd = performance.now() + cQuantum;
+	cycle: while (complete || performance.now() < cEnd) {
 		const cStart = performance.now();
 		if (!this.running || this.queue.blocks.length === 0) {
 			// Dispatcher is not running or there are no ControlBlocks
 			this.stop();
 			return this.lastReturn;
 		}
+		// Get the next runnable ControlBlock
 		const block = this.queue.getNext();
 		if (block === null) {
 			// No runnable ControlBlocks
 			this.stop();
 			return this.lastReturn;
 		}
-		// Advance execution of the last Functor in the virtual stack
 		try {
-			const hzFunctor = block.getCurrent();
-			this.curFunctor = hzFunctor;
-			// Advances execution of the hzFunctor and saves the yielded state
-			if (block.lastError !== null) {
-				// Uncaught error was seen before, so throw it into the hzFunctor
-				var state = hzFunctor.throwIntoFunctor(block.lastError);
-				block.lastError = null;
-			} else {
-				// A value was returned or yielded before, so invoke the hzFunctor with it
-				var state = block.lastReturn !== null ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
-				block.lastReturn = null;
-			}
-			// Process the yielded state of the hzFunctor
-			if (hzFunctor.type === "iterator") hzFunctor.args = [];
-			if (hzFunctor.type === "generator") {
-				state = this.detourLib.hookIterator(state);
-			} else if (hzFunctor.type === "unknown") {
-				if ((typeof state) === "undefined") state = this.tokenLib.return;
-				else state = this.tokenLib.returnValue.set([state]);
-			} else if (hzFunctor.type !== "generator") {
-				if (!(this.tokenLib.symbols.tokenSym in hzFunctor.image)) state = this.tokenLib.returnValue.set([state]);
-				else if (!this.isKernelized(state.value)) {
-					if ((typeof state.value) === "undefined") state = this.tokenLib.return;
-					else state = this.tokenLib.returnValue.set([state.value]);
-				} else {
-					state = state.value;
-				}
-			}
-			if (hzFunctor.type === "constructor") {
-				if (state === this.tokenLib.return || (state === this.tokenLib.returnValue && (typeof state.arg) === "undefined")) {
-					state = this.tokenLib.returnValue.set([hzFunctor.thisArg]);
-				}
-			}
-			// Process an HzToken
-			this.processToken(state);
+			// Advance execution of the last Functor in the virtual stack
+			Dispatcher.dispatch(this.tokenLib, this.detourLib, this.queue, block, throwUp);
 			this.lastReturn = block.lastReturn;
 		} catch (error) {
-			// Uncaught error, so end the hzFunctor
-			this.queue.killLast();
-			block.lastError = error;
+			// Uncaught error
 			this.lastError = error;
-			if (block.stack.length === 0) {
-				if (throwUp) {
-					this.stop();
-					throw error;
-				} else {
-					console.error(error);
-				}
+			if (throwUp) {
+				this.stop();
+				throw error;
 			}
 		}
 		// Update dispactcher metrics
@@ -191,14 +223,10 @@ Dispatcher.prototype.cycle = function (quantum = null, throwUp = false) {
 	}
 	return this.lastReturn;
 };
-// Customize and extend the RunQueue
-Dispatcher.prototype.extendQueue = function(extender) {
-	this.queue.extend(extender);
-};
 // Synchronous mode, runs for the duration of the quantum in milliseconds
-Dispatcher.prototype.runSync = function (quantum = null, throwUp = false) {
+Dispatcher.prototype.runSync = function (cQuantum = null, throwUp = false) {
 	this.running = true;
-	return this.cycle(quantum, throwUp);
+	this.cycle(cQuantum, throwUp);
 	if (!this.running) return this.lastReturn;
 };
 // Run-to-completion mode, runs runSync continuously until all programs have exited
@@ -206,11 +234,11 @@ Dispatcher.prototype.runComplete = function (throwUp = false) {
 	return this.runSync(false, throwUp);
 };
 // Asynchronous mode, runs runSync on an interval in the asynchrnous event loop
-Dispatcher.prototype.runAsync = function (interval = 30, quantum = null, throwUp = false) {
+Dispatcher.prototype.runAsync = function (interval = 30, cQuantum = null, throwUp = false) {
 	if (this.running) return;
 	return new Promise((resolve) => {
 		const asyncRunner = () => {
-			this.runSync(quantum, throwUp);
+			this.runSync(cQuantum, throwUp);
 			if (!this.running) return resolve(this.lastReturn);
 			setTimeout(asyncRunner, interval);
 		};
