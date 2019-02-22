@@ -1,11 +1,12 @@
-// A type of low level Stack Control Block
-function ControlBlock() {
+// A type of low level Process Control Block
+function ControlBlock(tokenLib) {
+	this.tokenLib = tokenLib;
 	// A virtual stack of hzFunctors and Functions
 	this.stack = [];
 	// The last new return value seen by the Dispatcher
-	this.lastReturn = null;
+	this.lastReturn = tokenLib.symbols.nullSym;
 	// The last new Error seen by the Dispatcher
-	this.lastError = null;
+	this.lastError = tokenLib.symbols.nullSym;
 	// Pauses a stack's execution
 	this.waiting = false;
 	this.metrics = {
@@ -19,7 +20,7 @@ ControlBlock.prototype.pushFunctor = function(hzFunctor) {
 	this.stack.push(hzFunctor);
 };
 ControlBlock.prototype.popFunctor = function() {
-	this.stack.pop();
+	return this.stack.pop();
 };
 ControlBlock.prototype.getCurrent = function() {
 	if (this.stack.length === 0) return null;
