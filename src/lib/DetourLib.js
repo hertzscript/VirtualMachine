@@ -1,13 +1,13 @@
+// Library for implementing dynamic Function call interception (FCI)
 function DetourLib(Dispatcher, tokenLib) {
 	this.tokenLib = tokenLib;
 	this.Dispatcher = Dispatcher;
 }
-// Dynamic call site interception
 DetourLib.prototype.createDetour = function (functor) {
 	const tokenLib = this.tokenLib;
 	const hzFunctor = function (...argsArray) {
 		const hzDisp = new this.Dispatcher(tokenLib);
-		hzDisp.enqueue(hzFunctor[d.tokenLib.symbols.tokenSym], this, argsArray);
+		hzDisp.enqueue(hzFunctor, this, argsArray);
 		return hzDisp.runComplete();
 	};
 	hzFunctor[this.tokenLib.symbols.tokenSym] = functor;
@@ -33,7 +33,7 @@ DetourLib.prototype.hookIterator = function (iterator) {
 	iterator.throw[this.tokenLib.symbols.iterSym] = true;
 	iterator.return[this.tokenLib.symbols.iterSym] = true;
 	iterator[this.tokenLib.symbols.iterSym] = true;
-	return this.tokenLib.yieldValue.set([iterator]);
+	return this.tokenLib.tokens.yieldValue.set([iterator]);
 };
 DetourLib.prototype.hookCoroutine = function (functor) {
 	const coroutine = this.createDetour(functor);
@@ -42,24 +42,22 @@ DetourLib.prototype.hookCoroutine = function (functor) {
 	return coroutine;
 };
 DetourLib.prototype.hookArrowCoroutine = function (functor, thisArg) {
-	const name = functor.name;
-	const length = functor.length;
-	const toString = functor.toString.bind(functor);
-	functor = functor.bind(thisArg);
-	Object.defineProperties(functor, {
+	const descriptor = {
 		length: {
 			configurable: true,
-			value: length
+			value: functor.length
 		},
 		name: {
 			configurable: true,
-			value: name
+			value: functor.name
 		},
 		toString: {
 			configurable: true,
-			value: toString
+			value: functor.toString.bind(functor)
 		}
-	});
+	};
+	functor = functor.bind(thisArg);
+	Object.defineProperties(functor, descriptor);
 	return this.hookCoroutine(functor);
 };
 module.exports = DetourLib;
