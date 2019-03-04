@@ -97,6 +97,12 @@ function TokenLib() {
 			yieldValue: new HzToken("yieldValue",
 				"arg"
 			),
+			// Remit to the caller of the Dispatcher without an argument
+			remit: new HzToken("remit"),
+			// Remit to the caller of the Dispatcher with an argument
+			remitValue: new HzToken("remitValue",
+				"arg"
+			),
 			// Indicates an HZ-inserted loop yield
 			loopYield: new HzToken("loopYield"),
 		},

@@ -50,10 +50,10 @@ Dispatcher.prototype.import = function (hzModule) {
 	this.spawn(hzModule(this.userLib));
 };
 // Imports an HzFunctor or HzModule and executes it in run-to-completion mode
-Dispatcher.prototype.exec = function (functor, thisArg = null, args = null) {
+Dispatcher.prototype.exec = function (functor, thisArg = null, args = null, throwUp = false) {
 	if (this.tokenLib.symbols.tokenSym in functor) this.spawn(functor, thisArgs, args);
 	else this.import(functor);
-	return this.runComplete();
+	return this.runComplete(throwUp);
 };
 // Pop and terminate a Functor from the stack
 Dispatcher.prototype.killLast = function () {
@@ -83,6 +83,8 @@ Dispatcher.prototype.processToken = function (tokenLib, queue, block, hzFunctor,
 		// Yield without argument
 		block.popFunctor();
 		block.lastReturn = token.arg;
+	} else if (token === tokenLib.tokens.remit || token === tokenLib.tokens.remitValue) {
+		return;
 	} else if (token === tokenLib.tokens.call) {
 		// Function call without arguments
 		if (token.isTailCall && hzFunctor.isTailCall) block.killLast();
@@ -136,17 +138,22 @@ Dispatcher.processToken = Dispatcher.prototype.processToken;
 Dispatcher.prototype.coerceState = function (tokenLib, detourLib, hzFunctor, state) {
 	if (hzFunctor.type === "iterator") hzFunctor.args = [];
 	if (hzFunctor.type === "generator") {
+		// Detour an iterator
 		state = detourLib.hookIterator(state);
 	} else if (hzFunctor.type === "unknown") {
+		// State is not an Hztoken, so wrap it in one
 		if ((typeof state) === "undefined") state = tokenLib.tokens.return;
 		else state = tokenLib.tokens.returnValue.set([state]);
 	} else {
 		if (!(tokenLib.symbols.tokenSym in hzFunctor.image)) {
+			// State is not an HzToken, so wrap it in one
 			state = tokenLib.tokens.returnValue.set([state]);
 		} else if (!tokenLib.isKernelized(state.value)) {
+			// State is not an HzToken, so wrap it in one
 			if ((typeof state.value) === "undefined") state = tokenLib.tokens.return;
 			else state = tokenLib.tokens.returnValue.set([state.value]);
 		} else {
+			// State is an HzToken, so unwrap it
 			state = state.value;
 		}
 	}
@@ -154,8 +161,10 @@ Dispatcher.prototype.coerceState = function (tokenLib, detourLib, hzFunctor, sta
 		state === tokenLib.tokens.return
 		|| (state === tokenLib.tokens.returnValue && (typeof state.arg) === "undefined")
 	)) {
+		// State is from a constructor, so wrap it in an HzToken
 		state = tokenLib.tokens.returnValue.set([hzFunctor.thisArg]);
 	}
+	// Return the HzToken
 	return state;
 };
 Dispatcher.coerceState = Dispatcher.prototype.coerceState;
@@ -172,8 +181,14 @@ Dispatcher.prototype.dispatch = function (tokenLib, detourLib, queue, block, thr
 			var state = block.lastReturn !== tokenLib.symbols.nullSym ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
 			block.lastReturn = tokenLib.symbols.nullSym;
 		}
-		// Process an HzToken
-		Dispatcher.processToken(tokenLib, queue, block, hzFunctor, Dispatcher.coerceState(tokenLib, detourLib, hzFunctor, state));
+		// Prepare the yielded state for processing.
+		// Will wrap naked values in an HzToken.
+		state = Dispatcher.coerceState(tokenLib, detourLib, hzFunctor, state);
+		if (state === tokenLib.tokens.remit || state === tokenLib.tokens.remitValue) {
+			return state;
+		}
+		// Process the HzToken
+		Dispatcher.processToken(tokenLib, queue, block, hzFunctor, state);
 	} catch (error) {
 		// Uncaught error, so terminate the hzFunctor
 		console.error(error);
@@ -204,7 +219,7 @@ Dispatcher.prototype.cycle = function (cQuantum = null, throwUp = false) {
 		}
 		try {
 			// Advance execution of the last Functor in the virtual stack
-			Dispatcher.dispatch(this.tokenLib, this.detourLib, this.queue, block, throwUp);
+			var state = Dispatcher.dispatch(this.tokenLib, this.detourLib, this.queue, block, throwUp);
 			this.lastReturn = block.lastReturn;
 		} catch (error) {
 			// Uncaught error
@@ -220,14 +235,18 @@ Dispatcher.prototype.cycle = function (cQuantum = null, throwUp = false) {
 		// Update ControlBlock metrics
 		block.metrics.makeflight = this.metrics.makeflight;
 		block.metrics.makespan += block.metrics.makeflight;
+		if (state === this.tokenLib.tokens.remit || state === this.tokenLib.tokens.remitValue) {
+			// Remit HzToken seen, so stop the cycle and return it
+			this.stop();
+			return state;
+		}
 	}
 	return this.lastReturn;
 };
 // Synchronous mode, runs for the duration of the quantum in milliseconds
 Dispatcher.prototype.runSync = function (cQuantum = null, throwUp = false) {
 	this.running = true;
-	this.cycle(cQuantum, throwUp);
-	if (!this.running) return this.lastReturn;
+	return this.cycle(cQuantum, throwUp);
 };
 // Run-to-completion mode, runs runSync continuously until all programs have exited
 Dispatcher.prototype.runComplete = function (throwUp = false) {
@@ -238,8 +257,8 @@ Dispatcher.prototype.runAsync = function (interval = 30, cQuantum = null, throwU
 	if (this.running) return;
 	return new Promise((resolve) => {
 		const asyncRunner = () => {
-			this.runSync(cQuantum, throwUp);
-			if (!this.running) return resolve(this.lastReturn);
+			const state = this.runSync(cQuantum, throwUp);
+			if (!this.running) return resolve(state);
 			setTimeout(asyncRunner, interval);
 		};
 		setTimeout(asyncRunner, interval);
