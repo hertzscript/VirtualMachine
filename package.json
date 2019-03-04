@@ -1,6 +1,6 @@
 {
 	"name": "hertzscript-dispatcher",
-	"version": "0.0.13",
+	"version": "0.0.14",
 	"description": "Executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
 	"keywords": [
 		"javascript",
@@ -48,7 +48,7 @@
 	"dependencies": {
 		"command-line-args": "^5.0.2",
 		"console-buffer": "^1.0.1",
-		"hertzscript-compiler": "0.0.3",
+		"hertzscript-compiler": "",
 		"terminal-kit": "^1.26.8"
 	}
 }
