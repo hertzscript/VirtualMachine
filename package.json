@@ -1,6 +1,6 @@
 {
 	"name": "hertzscript-dispatcher",
-	"version": "0.0.12",
+	"version": "0.0.13",
 	"description": "Executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
 	"keywords": [
 		"javascript",
