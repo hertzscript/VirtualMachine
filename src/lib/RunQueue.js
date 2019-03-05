@@ -33,7 +33,7 @@ RunQueue.prototype.getNext = function () {
 		this.activeBlock = this.blocks[loc];
 		this.blockIndex = loc;
 		if (this.activeBlock.stack.length === 0) {
-			this.killLast();
+			this.removeCurrent();
 			continue;
 		}
 		return this.activeBlock;

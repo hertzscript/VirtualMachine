@@ -27,7 +27,7 @@ ControlBlock.prototype.getCurrent = function() {
 	return this.stack[this.stack.length - 1];
 };
 ControlBlock.prototype.killLast = function() {
-	this.stack.pop().returnFromFunctor();
+	if (this.stack.length !== 0) this.popFunctor().returnFromFunctor();
 };
 ControlBlock.prototype.killAll = function() {
 	while (this.stack.length >= 0) this.killLast();
