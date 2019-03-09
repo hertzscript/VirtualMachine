@@ -95,7 +95,8 @@ function TokenLib() {
 			),
 			// YieldExpression with an argument (state object)
 			yieldValue: new HzToken("yieldValue",
-				"arg"
+				"arg",
+				"delegate"
 			),
 			// Remit to the caller of the Dispatcher without an argument
 			remit: new HzToken("remit"),
