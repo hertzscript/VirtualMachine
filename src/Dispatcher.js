@@ -83,8 +83,6 @@ Dispatcher.prototype.processToken = function (tokenLib, queue, block, hzFunctor,
 		// Yield without argument
 		block.popFunctor();
 		block.lastReturn = token.arg;
-	} else if (token === tokenLib.tokens.remit || token === tokenLib.tokens.remitValue) {
-		return;
 	} else if (token === tokenLib.tokens.call) {
 		// Function call without arguments
 		if (token.isTailCall && hzFunctor.isTailCall) block.killLast();
