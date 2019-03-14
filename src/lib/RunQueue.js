@@ -12,8 +12,9 @@ function RunQueue(tokenLib, quantum = 0) {
 	this.blockIndex = 0;
 }
 RunQueue.prototype.extend = function (extender) {
-	if (typeof extender !== "function")
-	throw new TypeError("setPolicy expects type \"function\" but type \"" + typeof extender + "\" was given.");
+	if (typeof extender !== "function") {
+		throw new TypeError("extend expects type \"function\" but type \"" + typeof extender + "\" was given.");
+	}
 	extender.call(this);
 };
 RunQueue.prototype.getNext = function () {
@@ -34,6 +35,7 @@ RunQueue.prototype.getNext = function () {
 		this.blockIndex = loc;
 		if (this.activeBlock.stack.length === 0) {
 			this.removeCurrent();
+			if (this.blocks.length === 0) break;
 			continue;
 		}
 		return this.activeBlock;
@@ -41,13 +43,8 @@ RunQueue.prototype.getNext = function () {
 	return null;
 };
 RunQueue.prototype.enqueue = function (hzFunctor) {
-	if (this.blocks.length === 0) {
-		const block = new ControlBlock(this.tokenLib);
-		block.pushFunctor(hzFunctor);
-		this.blocks.push(block);
-	} else {
-		this.activeBlock.pushFunctor(hzFunctor);
-	}
+	if (this.blocks.length === 0) this.spawn(hzFunctor);
+	else this.activeBlock.pushFunctor(hzFunctor);
 };
 RunQueue.prototype.spawn = function (hzFunctor) {
 	const block = new ControlBlock(this.tokenLib);
