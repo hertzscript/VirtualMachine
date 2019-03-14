@@ -115,6 +115,8 @@ function TokenLib() {
 			genSym: Symbol("Generator Symbol"),
 			// Marks an object as an iterator
 			iterSym: Symbol("Iterator Symbol"),
+			// Property to access a delegated iterator
+			delegateSym: Symbol("Iterator Delegation Symbol"),
 			// Marks a functor as a coroutine.
 			crtSym: Symbol("Coroutine Symbol"),
 			// Marks a functor as a constructor

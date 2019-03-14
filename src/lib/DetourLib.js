@@ -26,14 +26,50 @@ DetourLib.prototype.hookGenerator = function (functor) {
 	generator[this.tokenLib.symbols.genSym] = true;
 	return generator;
 };
+DetourLib.prototype.createIteratorDetour = function(iterator, prop) {
+	const tokenLib = this.tokenLib;
+	const origIter = iterator[prop];
+	const detour = this.createDetour(function(value) {
+		if (iterator[tokenLib.symbols.delegateSym] === null) {
+			const state = origIter.call(this, value);
+			if (
+				tokenLib.isKernelized(state.value)
+				&& state.value === tokenLib.tokens.yieldValue
+				&& state.value.delegate
+			) {
+				iterator[tokenLib.symbols.delegateSym] = state.value.arg.value;
+				state.value.arg.value.yes = true;
+				return iterator[prop][tokenLib.symbols.tokenSym].call(iterator[tokenLib.symbols.delegateSym], value);
+			}
+			return state;
+		} else {
+			try {
+				const state = iterator[tokenLib.symbols.delegateSym][prop][tokenLib.symbols.tokenSym].call(this, value);
+				if (!state.done) return state;
+				iterator[tokenLib.symbols.delegateSym] = null;
+				if (tokenLib.isKernelized(state.value)) {
+					return iterator[prop][tokenLib.symbols.tokenSym].call(this, state.value.arg.value);
+				}
+				return iterator[prop][tokenLib.symbols.tokenSym].call(this);
+			} catch (error) {
+				return iterator.throw[tokenLib.symbols.tokenSym].call(this, error);
+			}
+		}
+	});
+	detour[this.tokenLib.symbols.iterSym] = true;
+	return detour;
+}
 DetourLib.prototype.hookIterator = function (iterator) {
-	iterator.next = this.createDetour(iterator.next);
-	iterator.throw = this.createDetour(iterator.throw);
-	iterator.return = this.createDetour(iterator.return);
-	iterator.next[this.tokenLib.symbols.iterSym] = true;
-	iterator.throw[this.tokenLib.symbols.iterSym] = true;
-	iterator.return[this.tokenLib.symbols.iterSym] = true;
 	iterator[this.tokenLib.symbols.iterSym] = true;
+	iterator[this.tokenLib.symbols.delegateSym] = null;
+	iterator.next = this.createIteratorDetour(iterator, "next");
+	iterator.throw = this.createIteratorDetour(iterator, "throw");
+	iterator.return = this.createIteratorDetour(iterator, "return");
+	const detourLib = this;
+	origIter = iterator[Symbol.iterator];
+	iterator[Symbol.iterator] = function (value) {
+		return detourLib.hookIterator(origIter.call(this, value));
+	};
 	return this.tokenLib.tokens.yieldValue.set([iterator]);
 };
 DetourLib.prototype.hookCoroutine = function (functor) {
