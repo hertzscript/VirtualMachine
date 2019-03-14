@@ -47,7 +47,6 @@
 	"license": "MIT",
 	"dependencies": {
 		"command-line-args": "^5.0.2",
-		"console-buffer": "^1.0.1",
 		"hertzscript-compiler": "",
 		"terminal-kit": "^1.26.8"
 	}
