@@ -26,33 +26,54 @@ DetourLib.prototype.hookGenerator = function (functor) {
 	generator[this.tokenLib.symbols.genSym] = true;
 	return generator;
 };
-DetourLib.prototype.createIteratorDetour = function(iterator, prop) {
+const GeneratorFunction = (function* () { }).constructor;
+DetourLib.prototype.createIteratorDetour = function (origIter, iterator, prop) {
 	const tokenLib = this.tokenLib;
-	const origIter = iterator[prop];
-	const detour = this.createDetour(function(value) {
-		if (iterator[tokenLib.symbols.delegateSym] === null) {
-			const state = origIter.call(this, value);
+	const tokenSym = tokenLib.symbols.tokenSym;
+	const delegateSym = tokenLib.symbols.delegateSym;
+	const detour = this.createDetour(function (...values) {
+		if (iterator[delegateSym] === null) {
+			const state = origIter[prop].apply(this, values);
 			if (
 				tokenLib.isKernelized(state.value)
 				&& state.value === tokenLib.tokens.yieldValue
 				&& state.value.delegate
 			) {
-				iterator[tokenLib.symbols.delegateSym] = state.value.arg.value;
-				state.value.arg.value.yes = true;
-				return iterator[prop][tokenLib.symbols.tokenSym].call(iterator[tokenLib.symbols.delegateSym], value);
+				const delegate = state.value.arg.value;
+				if (typeof delegate === "undefined") throw new TypeError((typeof delegate) + " is not iterable");
+				if (tokenLib.symbols.iterSym in delegate) {
+					iterator[delegateSym] = delegate;
+				} else if ((typeof delegate === "function") && delegate.constructor === GeneratorFunction) {
+					iterator[delegateSym] = delegate.apply(this, values);
+				} else if (Symbol.iterator in delegate) {
+					iterator.delegateSym = delegate[Symbol.iterator].apply(this, values);
+				} else {
+					throw new TypeError((typeof delegate) + " is not iterable");
+				}
+				return iterator[prop][tokenSym].apply(delegate, values);
+			}
+			if (state.done && (typeof state.value) === "undefined") {
+				return {
+					done: true,
+					value: tokenLib.tokens.returnValue.set([state])
+				};
 			}
 			return state;
 		} else {
 			try {
-				const state = iterator[tokenLib.symbols.delegateSym][prop][tokenLib.symbols.tokenSym].call(this, value);
+				const state = iterator[delegateSym][prop][tokenSym].apply(iterator[delegateSym], values);
 				if (!state.done) return state;
-				iterator[tokenLib.symbols.delegateSym] = null;
-				if (tokenLib.isKernelized(state.value)) {
-					return iterator[prop][tokenLib.symbols.tokenSym].call(this, state.value.arg.value);
+				iterator[delegateSym] = null;
+				if (
+					tokenLib.isKernelized(state.value)
+					&& (state.value === tokenLib.tokens.yieldValue || state.value === tokenLib.tokens.returnValue)
+				) {
+					return iterator[prop][tokenSym].call(this, state.value.arg);
 				}
-				return iterator[prop][tokenLib.symbols.tokenSym].call(this);
+				return iterator[prop][tokenSym].call(this);
 			} catch (error) {
-				return iterator.throw[tokenLib.symbols.tokenSym].call(this, error);
+				iterator[delegateSym] = null;
+				return iterator.throw[tokenSym].call(this, error);
 			}
 		}
 	});
@@ -60,16 +81,16 @@ DetourLib.prototype.createIteratorDetour = function(iterator, prop) {
 	return detour;
 }
 DetourLib.prototype.hookIterator = function (iterator) {
+	const origIter = {
+		next: iterator.next,
+		throw: iterator.throw,
+		return: iterator.return
+	};
 	iterator[this.tokenLib.symbols.iterSym] = true;
 	iterator[this.tokenLib.symbols.delegateSym] = null;
-	iterator.next = this.createIteratorDetour(iterator, "next");
-	iterator.throw = this.createIteratorDetour(iterator, "throw");
-	iterator.return = this.createIteratorDetour(iterator, "return");
-	const detourLib = this;
-	origIter = iterator[Symbol.iterator];
-	iterator[Symbol.iterator] = function (value) {
-		return detourLib.hookIterator(origIter.call(this, value));
-	};
+	iterator.next = this.createIteratorDetour(origIter, iterator, "next");
+	iterator.throw = this.createIteratorDetour(origIter, iterator, "throw");
+	iterator.return = this.createIteratorDetour(origIter, iterator, "return");
 	return this.tokenLib.tokens.yieldValue.set([iterator]);
 };
 DetourLib.prototype.hookCoroutine = function (functor) {

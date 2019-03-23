@@ -150,8 +150,8 @@ Dispatcher.prototype.coerceState = function (tokenLib, detourLib, hzFunctor, sta
 			// State is not an HzToken, so wrap it in one
 			if ((typeof state.value) === "undefined") state = tokenLib.tokens.return;
 			else state = tokenLib.tokens.returnValue.set([state.value]);
-		} else {
-			// State is an HzToken, so unwrap it
+		} else if (!tokenLib.isKernelized(state)) {
+			// State.value is an HzToken, so unwrap it
 			state = state.value;
 		}
 	}
