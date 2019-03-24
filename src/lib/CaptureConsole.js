@@ -65,7 +65,7 @@ CaptureConsole.prototype.getCapturedText = function () {
 /**
  * Clears all of the captured text
  */
-CaptureConsole.prototype.clearCaptureText = function () {
+CaptureConsole.prototype.clearCapturedText = function () {
 	this._capturedText = [];
 };
 module.exports = CaptureConsole;
