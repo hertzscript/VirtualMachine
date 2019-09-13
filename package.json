@@ -1,6 +1,6 @@
 {
 	"name": "hertzscript-dispatcher",
-	"version": "0.0.17",
+	"version": "0.0.18",
 	"description": "Executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
 	"keywords": [
 		"javascript",
@@ -23,22 +23,18 @@
 		"preemptive-multitasking",
 		"voluntary-preemtive-multitasking"
 	],
-	"homepage": "https://github.com/Floofies/hertzscript-dispatcher#readme",
+	"homepage": "https://github.com/hertzscript/Dispatcher#readme",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Floofies/hertzscript-dispatcher.git"
+		"url": "https://github.com/hertzscript/Dispatcher.git"
 	},
 	"bugs": {
-		"url": "https://github.com/Floofies/hertzscript-dispatcher/issues"
+		"url": "https://github.com/hertzscript/Dispatcher/issues"
 	},
 	"main": "src/Dispatcher.js",
 	"bin": {
 		"hzs": "./bin/executeCLI.js",
-		"hzscript": "./bin/executeCLI.js",
-		"hzr": "./bin/REPL.js",
-		"hzrepl": "./bin/REPL.js",
-		"hzvelocity": "./bin/cREPL.js",
-		"hzv": "./bin/cREPL.js"
+		"hzscript": "./bin/executeCLI.js"
 	},
 	"author": "Dani Glore (https://github.com/Floofies)",
 	"contributors": [
