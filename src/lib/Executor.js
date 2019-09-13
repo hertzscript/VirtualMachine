@@ -1,4 +1,5 @@
 // Processes a kernelized instruction token
+const HzFunctor = require("./HzFunctor.js");
 module.exports = function Executors(additions = null) {
 	const executors = {
 		// Loop interruptor
