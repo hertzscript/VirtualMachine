@@ -43,13 +43,15 @@ RunQueue.prototype.getNext = function () {
 	return null;
 };
 RunQueue.prototype.enqueue = function (hzFunctor) {
-	if (this.blocks.length === 0) this.spawn(hzFunctor);
+	if (this.blocks.length === 0) return this.spawn(hzFunctor);
 	else this.activeBlock.pushFunctor(hzFunctor);
+	return this.activeBlock;
 };
 RunQueue.prototype.spawn = function (hzFunctor) {
 	const block = new ControlBlock(this.tokenLib);
 	block.pushFunctor(hzFunctor);
 	this.blocks.push(block);
+	return block;
 };
 RunQueue.prototype.removeCurrent = function () {
 	this.blocks.splice(this.blockIndex, 1);
