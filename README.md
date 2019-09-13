@@ -2,14 +2,12 @@
 
 [![NPM](https://nodei.co/npm/hertzscript-dispatcher.png)](https://nodei.co/npm/hertzscript-dispatcher/)
 
-The HertzScript coroutine dispatcher executes code that was compiled by the [HertzScript Compiler](https://github.com/Floofies/hertzscript-compiler).
+The HertzScript coroutine dispatcher executes code that was compiled by the [HertzScript Compiler](https://github.com/hertzscript/Compiler).
 
-See the [HertzScript Specification](https://github.com/Floofies/hertzscript-specification) repository for more information.
+See the [HertzScript Specification](https://github.com/hertzscript/Specification) repository for more information.
 
 - [Command-Line Interfaces](#command-line-interfaces)
 	- [`hzs` / `hzscript`](#hzs--hzscript)
-	- [`hzv` / `hzvelocity`](#hzv--hzvelocty)
-	- [`hzr` / `hzrepl`](#hzr--hzrepl)
 - [Dispatcher Module](#dispatcher-module)
 	- [`import`](#dispatcherprototypeimport)
 	- [`exec`](#dispatcherprototypeexec)
@@ -24,15 +22,13 @@ See the [HertzScript Specification](https://github.com/Floofies/hertzscript-spec
 There are multiple ways to use this dispatcher.
 
 - Command-line executor
-- Command-line simple REPL
-- Command-line concurrent Velocity REPL
 - Dispatcher module
 
 The dispatcher module can be run in multiple different execution modes:
 
 - Run-To-Completion
-- Synchronous time-slicing
-- Asynchronous event loop time-slicing
+- Synchronous quantum/time-slicing
+- Asynchronous quantum/time-slicing
 
 ## Command-Line Interfaces
 
@@ -61,24 +57,6 @@ Execute source code with optional hot-compiling via `stdin`, argument, or file i
 `--spawn`
 
 - If set in addition to the `--compile` option, then `hertzscript-compiler` will be used to detect and compile the `spawn` keyword. If the `--compile` option is not present, then this option will do nothing.
-
-### `hzv` / `hzvelocity`
-
-Opens the concurrent HertzScript Velocity REPL which is designed specifically for HertzScript coroutines. The REPL consists of a status bar at the top, a virtual console output window in the middle, and a source code input line at the bottom. Source code is compiled before it is executed, and supports the `spawn` keyword. All running code runs concurrently to the REPL, so you can continue typing/adding code while existing code is still running.
-
-- To run code, simply type it at the bottom and press enter.
-
-- To scroll the virtual console window up and down, press PageUp and PageDown.
-
-- To quit, either press Control+C twice, or type `.exit` and press enter.
-
-### `hzr` / `hzrepl`
-
-Opens a non-Concurrent REPL which behaves more like a traditional NodeJS REPL. This REPL lacks a status bar and virtual console window and runs all code in run-to-completion mode which blocks the REPL until the all code has completed running.
-
-- To run code, simply type it at the bottom and press enter.
-
-- To quit press Control+C twice.
 
 ---
 
