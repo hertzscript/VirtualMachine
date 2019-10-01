@@ -17,7 +17,7 @@ RunQueue.prototype.extend = function (extender) {
 	}
 	extender.call(this);
 };
-RunQueue.prototype.getNext = function () {
+RunQueue.prototype.getNextFrame = function () {
 	if (this.blocks.length === 0) return null;
 	if (
 		this.activeBlock !== null
@@ -34,7 +34,7 @@ RunQueue.prototype.getNext = function () {
 		this.activeBlock = this.blocks[loc];
 		this.blockIndex = loc;
 		if (this.activeBlock.stack.length === 0) {
-			this.removeCurrent();
+			this.removeCurrentBlock();
 			if (this.blocks.length === 0) break;
 			continue;
 		}
@@ -42,32 +42,32 @@ RunQueue.prototype.getNext = function () {
 	}
 	return null;
 };
-RunQueue.prototype.enqueue = function (hzFunctor) {
-	if (this.blocks.length === 0) return this.spawn(hzFunctor);
-	else this.activeBlock.pushFunctor(hzFunctor);
+RunQueue.prototype.enqueue = function (stackFrame) {
+	if (this.blocks.length === 0) return this.spawn(stackFrame);
+	else this.activeBlock.pushFrame(stackFrame);
 	return this.activeBlock;
 };
-RunQueue.prototype.spawn = function (hzFunctor) {
+RunQueue.prototype.spawn = function (stackFrame) {
 	const block = new ControlBlock(this.tokenLib);
-	block.pushFunctor(hzFunctor);
+	block.pushFrame(stackFrame);
 	this.blocks.push(block);
 	return block;
 };
-RunQueue.prototype.removeCurrent = function () {
+RunQueue.prototype.removeCurrentBlock = function () {
 	this.blocks.splice(this.blockIndex, 1);
 	this.blockIndex--;
 	this.activeBlock = this.blockIndex < 0 ? null : this.blocks[this.blockIndex];
 };
-RunQueue.prototype.returnFromLast = function () {
-	this.activeBlock.killLast();
+RunQueue.prototype.returnFromLastFrame = function () {
+	this.activeBlock.killLastFrame();
 };
-RunQueue.prototype.killLast = function () {
+RunQueue.prototype.killLastFrame = function () {
 	if (this.activeBlock === null) return;
-	this.returnFromLast();
-	if (this.activeBlock.stack.length === 0) this.removeCurrent();
+	this.returnFromLastFrame();
+	if (this.activeBlock.stack.length === 0) this.removeCurrentBlock();
 };
-RunQueue.prototype.killAll = function () {
-	this.activeBlock.killAll();
-	this.removeCurrent();
+RunQueue.prototype.killLastBlock = function () {
+	this.activeBlock.killAllFrames();
+	this.removeCurrentBlock();
 };
 module.exports = RunQueue;

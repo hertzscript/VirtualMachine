@@ -32,7 +32,7 @@ DetourLib.prototype.createIteratorDetour = function (origIter, iterator, prop) {
 	const tokenSym = tokenLib.symbols.tokenSym;
 	const delegateSym = tokenLib.symbols.delegateSym;
 	const detour = this.createDetour(function (...values) {
-		if (iterator[delegateSym] === null) {
+		if (!iterator[delegateSym] || iterator[delegateSym] === null) {
 			const state = origIter[prop].apply(this, values);
 			if (
 				tokenLib.isKernelized(state.value)
@@ -46,7 +46,7 @@ DetourLib.prototype.createIteratorDetour = function (origIter, iterator, prop) {
 				} else if ((typeof delegate === "function") && delegate.constructor === GeneratorFunction) {
 					iterator[delegateSym] = delegate.apply(this, values);
 				} else if (Symbol.iterator in delegate) {
-					iterator.delegateSym = delegate[Symbol.iterator].apply(this, values);
+					iterator[delegateSym] = delegate[Symbol.iterator].apply(this, values);
 				} else {
 					throw new TypeError((typeof delegate) + " is not iterable");
 				}

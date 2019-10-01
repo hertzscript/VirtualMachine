@@ -1,7 +1,7 @@
 // A type of low level Process Control Block
 function ControlBlock(tokenLib) {
 	this.tokenLib = tokenLib;
-	// A virtual stack of hzFunctors and Functions
+	// A virtual stack of StackFrames
 	this.stack = [];
 	// The last new return value seen by the Dispatcher
 	this.lastReturn = tokenLib.symbols.nullSym;
@@ -16,20 +16,20 @@ function ControlBlock(tokenLib) {
 		makespan: 0
 	};
 }
-ControlBlock.prototype.pushFunctor = function(hzFunctor) {
-	this.stack.push(hzFunctor);
+ControlBlock.prototype.pushFrame = function(stackFrame) {
+	this.stack.push(stackFrame);
 };
-ControlBlock.prototype.popFunctor = function() {
+ControlBlock.prototype.popFrame = function() {
 	return this.stack.pop();
 };
-ControlBlock.prototype.getCurrent = function() {
+ControlBlock.prototype.getCurrentFrame = function() {
 	if (this.stack.length === 0) return null;
 	return this.stack[this.stack.length - 1];
 };
-ControlBlock.prototype.killLast = function() {
-	if (this.stack.length !== 0) this.popFunctor().returnFromFunctor();
+ControlBlock.prototype.killLastFrame = function() {
+	if (this.stack.length !== 0) this.popFrame().returnFromFunctor();
 };
-ControlBlock.prototype.killAll = function() {
-	while (this.stack.length >= 0) this.killLast();
+ControlBlock.prototype.killAllFrames = function() {
+	while (this.stack.length >= 0) this.killLastFrame();
 };
 module.exports = ControlBlock;

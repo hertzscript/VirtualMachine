@@ -1,6 +1,6 @@
 const performance = require('perf_hooks').performance;
 const Executor = require("./lib/Executor.js");
-const HzFunctor = require("./lib/HzFunctor.js");
+const StackFrame = require("./lib/StackFrame.js");
 const TokenLib = require("./lib/TokenLib.js");
 const DetourLib = require("./lib/DetourLib.js");
 const UserLib = require("./lib/UserLib.js");
@@ -33,7 +33,7 @@ function Dispatcher(tokenLib = null, cQuantum = 300, tQuantum = 0) {
 Dispatcher.lib = {
 	Executor,
 	RunQueue,
-	HzFunctor,
+	StackFrame,
 	TokenLib,
 	DetourLib,
 	UserLib
@@ -46,33 +46,33 @@ Dispatcher.prototype.threadQuantum = function (tQuantum) {
 Dispatcher.prototype.cycleQuantum = function (cQuantum) {
 	this.cQuantum = cQuantum;
 };
-// Add a hzFunctor to the active ControlBlock, or create a new ControlBlock for it
+// Add a StackFrame to the active ControlBlock, or create a new ControlBlock for it
 Dispatcher.prototype.enqueue = function (functor, thisArg = null, args = null, isTailCall = false) {
 	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
-	this.queue.enqueue(new HzFunctor(this.tokenLib.symbols, functor, thisArg, args, isTailCall));
+	this.queue.enqueue(new StackFrame(this.tokenLib.symbols, functor, thisArg, args, isTailCall));
 };
-// Add a hzFunctor to a new ControlBlock
+// Add a StackFrame to a new ControlBlock
 Dispatcher.prototype.spawn = function (functor, thisArg = null, args = null) {
 	if ((typeof functor) !== "function") throw new TypeError("Given value is not a function!");
-	this.queue.spawn(new HzFunctor(this.tokenLib.symbols, functor, thisArg, args));
+	this.queue.spawn(new StackFrame(this.tokenLib.symbols, functor, thisArg, args));
 };
 // Imports an HzModule
 Dispatcher.prototype.import = function (hzModule) {
 	this.spawn(hzModule(this.userLib));
 };
-// Imports an HzFunctor or HzModule and executes it in run-to-completion mode
+// Imports an StackFrame or HzModule and executes it in run-to-completion mode
 Dispatcher.prototype.exec = function (functor, thisArg = null, args = null, throwUp = false) {
 	if (this.tokenLib.symbols.tokenSym in functor) this.spawn(functor, thisArgs, args);
 	else this.import(functor);
 	return this.runComplete(throwUp);
 };
-// Pop and terminate a Functor from the stack
+// Pop and terminate a StackFrame from the stack
 Dispatcher.prototype.killLast = function () {
-	this.queue.killLast();
+	this.queue.killLastFrame();
 };
-// Pop and terminate all Functors in the stack
+// Pop and terminate all StackFrames in the stack
 Dispatcher.prototype.killAll = function () {
-	this.queue.killAll();
+	this.queue.killAllFrames();
 };
 // Processes a kernelized instruction
 Dispatcher.prototype.processToken = function (executor, tokenLib, queue, block, token, wasTailCall) {
@@ -80,18 +80,19 @@ Dispatcher.prototype.processToken = function (executor, tokenLib, queue, block, 
 	else return executor.illegalToken();
 };
 Dispatcher.processToken = Dispatcher.prototype.processToken;
-// Prepare the yielded state of an hzFunctor for processState
-Dispatcher.prototype.coerceState = function (tokenLib, detourLib, hzFunctor, state) {
-	if (hzFunctor.type === "iterator") hzFunctor.args = [];
-	if (hzFunctor.type === "generator") {
+// Prepare the yielded state of an StackFrame for processState
+const AsyncGeneratorFunction = (async function* foo(){}).constructor;
+Dispatcher.prototype.coerceState = function (tokenLib, detourLib, stackFrame, state) {
+	if (stackFrame.type === "iterator" ) stackFrame.args = [];
+	if (stackFrame.type === "generator") {
 		// Detour an iterator
-		state = detourLib.hookIterator(state);
-	} else if (hzFunctor.type === "unknown") {
+		state = detourLib.hookIterator(state, stackFrame.image[tokenLib.symbols.tokenSym].constructor === AsyncGeneratorFunction);
+	} else if (stackFrame.type === "unknown") {
 		// State is not an Hztoken, so wrap it in one
 		if ((typeof state) === "undefined") state = tokenLib.tokens.return;
 		else state = tokenLib.tokens.returnValue.set([state]);
 	} else {
-		if (!(tokenLib.symbols.tokenSym in hzFunctor.image)) {
+		if (!(tokenLib.symbols.tokenSym in stackFrame.image)) {
 			// State is not an HzToken, so wrap it in one
 			state = tokenLib.tokens.returnValue.set([state]);
 		} else if (!tokenLib.isKernelized(state.value)) {
@@ -103,42 +104,43 @@ Dispatcher.prototype.coerceState = function (tokenLib, detourLib, hzFunctor, sta
 			state = state.value;
 		}
 	}
-	if (hzFunctor.type === "constructor" && (
+	if (stackFrame.type === "constructor" && (
 		state === tokenLib.tokens.return
 		|| (state === tokenLib.tokens.returnValue && (typeof state.arg) === "undefined")
 	)) {
 		// State is from a constructor, so wrap it in an HzToken
-		state = tokenLib.tokens.returnValue.set([hzFunctor.thisArg]);
+		state = tokenLib.tokens.returnValue.set([stackFrame.thisArg]);
 	}
 	// Return the HzToken
 	return state;
 };
 Dispatcher.coerceState = Dispatcher.prototype.coerceState;
 Dispatcher.prototype.dispatch = function (executor, tokenLib, detourLib, queue, block, throwUp) {
-	const hzFunctor = block.getCurrent();
+	const stackFrame = block.getCurrentFrame();
 	try {
-		// Advances execution of the hzFunctor and saves the yielded state
+		// Advances execution of the StackFrame and saves the yielded state
 		if (block.lastError !== tokenLib.symbols.nullSym) {
-			// Uncaught error was seen before, so throw it into the hzFunctor
-			var state = hzFunctor.throwIntoFunctor(block.lastError);
+			// Uncaught error was seen before, so throw it into the StackFrame
+			var state = stackFrame.throwIntoFunctor(block.lastError);
 			block.lastError = tokenLib.symbols.nullSym;
 		} else {
-			// A value was returned or yielded before, so invoke the hzFunctor with it
-			var state = block.lastReturn !== tokenLib.symbols.nullSym ? hzFunctor.callFunctor(block.lastReturn) : hzFunctor.callFunctor();
+			//console.log(block.lastReturn)
+			// A value was returned or yielded before, so invoke the StackFrame with it
+			var state = block.lastReturn !== tokenLib.symbols.nullSym ? stackFrame.callFunctor(block.lastReturn) : stackFrame.callFunctor();
 			block.lastReturn = tokenLib.symbols.nullSym;
 		}
 		// Prepare the yielded state for processing.
 		// Will wrap naked values in an HzToken.
-		state = Dispatcher.coerceState(tokenLib, detourLib, hzFunctor, state);
+		state = Dispatcher.coerceState(tokenLib, detourLib, stackFrame, state);
 		if (state === tokenLib.tokens.remit || state === tokenLib.tokens.remitValue) {
 			return state;
 		}
 		// Process the HzToken
-		Dispatcher.processToken(executor, tokenLib, queue, block, state, hzFunctor.isTailCall);
+		Dispatcher.processToken(executor, tokenLib, queue, block, state, stackFrame.isTailCall);
 	} catch (error) {
-		// Uncaught error, so terminate the hzFunctor
+		// Uncaught error, so terminate the StackFrame
 		console.error(error);
-		queue.killLast();
+		queue.killLastFrame();
 		block.lastError = error;
 		if (block.stack.length === 0 && throwUp) if (throwUp) throw error;
 	}
@@ -160,7 +162,7 @@ Dispatcher.prototype.cycle = function (cQuantum = null, throwUp = false) {
 			return this.lastReturn;
 		}
 		// Get the next runnable ControlBlock
-		const block = this.queue.getNext();
+		const block = this.queue.getNextFrame();
 		if (block === null) {
 			// No runnable ControlBlocks
 			this.stop();
