@@ -1,4 +1,4 @@
-// A type of low level Process Control Block
+// Process Control Block
 function ControlBlock(tokenLib) {
 	this.tokenLib = tokenLib;
 	// A virtual stack of StackFrames
@@ -30,6 +30,6 @@ ControlBlock.prototype.killLastFrame = function() {
 	if (this.stack.length !== 0) this.popFrame().returnFromFunctor();
 };
 ControlBlock.prototype.killAllFrames = function() {
-	while (this.stack.length >= 0) this.killLastFrame();
+	while (this.stack.length > 0) this.killLastFrame();
 };
 module.exports = ControlBlock;

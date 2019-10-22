@@ -1,48 +1,36 @@
 {
-	"name": "hertzscript-dispatcher",
-	"version": "0.0.19",
+	"name": "hertzscript-vm",
+	"version": "0.0.1",
 	"description": "Executes preemptible JavaScript coroutines which conform to the HertzScript specification.",
 	"keywords": [
+		"virtual-machine",
+		"hertzscript",
+		"reflection",
 		"javascript",
 		"preemption",
 		"preemptive",
 		"preemptible",
-		"protothreads",
-		"green-threads",
 		"coroutines",
 		"coroutine",
-		"coroutine-dispatcher",
 		"concurrency",
-		"automatic-concurrency",
-		"concurrent",
 		"concurrent-programming",
 		"concurrent-javascript",
 		"stackless-coroutines",
-		"multitasking",
-		"cooperative-multitasking",
-		"preemptive-multitasking",
-		"voluntary-preemtive-multitasking"
+		"detour",
+		"hook"
 	],
-	"homepage": "https://github.com/hertzscript/Dispatcher#readme",
+	"homepage": "https://github.com/hertzscript/VirtualMachine#readme",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/hertzscript/Dispatcher.git"
+		"url": "https://github.com/hertzscript/VirtualMachine.git"
 	},
 	"bugs": {
-		"url": "https://github.com/hertzscript/Dispatcher/issues"
+		"url": "https://github.com/hertzscript/VirtualMachine/issues"
 	},
-	"main": "src/Dispatcher.js",
-	"bin": {
-		"hzs": "./bin/executeCLI.js",
-		"hzscript": "./bin/executeCLI.js"
-	},
+	"main": "src/index.js",
 	"author": "Dani Glore (https://github.com/Floofies)",
 	"contributors": [
 		"Thomas G. (https://github.com/trgwii)"
 	],
-	"license": "MIT",
-	"dependencies": {
-		"command-line-args": "^5.0.2",
-		"hertzscript-compiler": ""
-	}
+	"license": "MIT"
 }

@@ -1,15 +1,15 @@
 // Library for implementing dynamic Function call interception (FCI)
-function DetourLib(Dispatcher, tokenLib) {
+function DetourLib(VirtualMachine, tokenLib) {
+	this.VirtualMachine = VirtualMachine;
 	this.tokenLib = tokenLib;
-	this.Dispatcher = Dispatcher;
 }
 DetourLib.prototype.createDetour = function (functor) {
 	const tokenLib = this.tokenLib;
-	const Dispatcher = this.Dispatcher;
+	const VirtualMachine = this.VirtualMachine;
 	const hzFunctor = function (...argsArray) {
-		const hzDisp = new Dispatcher(tokenLib);
-		hzDisp.enqueue(hzFunctor, this, argsArray);
-		return hzDisp.runComplete();
+		const vm = new VirtualMachine(tokenLib);
+		vm.enqueue(hzFunctor, this, argsArray);
+		return vm.runComplete();
 	};
 	hzFunctor[this.tokenLib.symbols.tokenSym] = functor;
 	return hzFunctor;
@@ -80,7 +80,8 @@ DetourLib.prototype.createIteratorDetour = function (origIter, iterator, prop) {
 	detour[this.tokenLib.symbols.iterSym] = true;
 	return detour;
 }
-DetourLib.prototype.hookIterator = function (iterator) {
+DetourLib.prototype.hookIterator = function (iterator, async) {
+	// TODO: Implement async iterators
 	const origIter = {
 		next: iterator.next,
 		throw: iterator.throw,

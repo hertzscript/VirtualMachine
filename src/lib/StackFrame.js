@@ -1,5 +1,4 @@
 // Wraps a Function and stores the metadata/operands for it.
-
 function StackFrame(symbols, functor, thisArg = null, args = [], isTailCall = false) {
 	this.symbols = symbols;
 	this.image = functor;

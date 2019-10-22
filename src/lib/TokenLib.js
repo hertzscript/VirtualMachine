@@ -124,6 +124,6 @@ function TokenLib() {
 			// Proprietary Null. Builtin null considered userland datum.
 			nullSym: Symbol("Null Value Symbol")
 		}
-	};
-}
+	}
+};
 module.exports = TokenLib;
