@@ -1,7 +1,7 @@
-const Dispatcher = require("./Dispatcher.js");
+const Context = require("./Context.js");
 const hzCompile = require("hertzscript-compiler");
-module.exports = function execute(source, compile = false, spawn = false, async = null) {
-	if (compile) source = hzCompile(source, false, false, spawn);
+module.exports = function execute(source, compile = false, async = false) {
+	if (compile) source = hzCompile(source);
 	source = "(hzUserLib.hookCoroutine(function* (){" + source + "}))";
 	var hzModule = new Function(
 		'exports',
@@ -11,8 +11,12 @@ module.exports = function execute(source, compile = false, spawn = false, async 
 		'__dirname',
 		"return hzUserLib => { return " + source + "};"
 	);
-	const hzDisp = new Dispatcher();
-	hzDisp.import(hzModule(exports, require, module, __filename, __dirname));
-	if (async === null) return hzDisp.runComplete();
-	return hzDisp.runAsync(5, async, true);
+	const context = new Context();
+	context.import(hzModule(exports, require, module, __filename, __dirname));
+	if (!async) return context.runComplete(true);
+	function runAsync() {
+		context.dispatch(5, true);
+		if (!context.terminated) setTimeout(runAsync, 5);
+	}
+	setTimeout(runAsync, 5);
 };
